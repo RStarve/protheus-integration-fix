@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Search,
   ShoppingCart,
+  X,
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -175,11 +176,19 @@ function ComprasPage() {
     [produtos],
   );
 
-  const filtrados = useMemo(() => {
-    const q = busca.trim().toLowerCase();
+  // Cross-filter: aplica marca + categoria (filtros de BI) sobre os dados brutos.
+  // KPIs, gráficos e tabela consomem daqui para reagirem em conjunto.
+  const filteredDados = useMemo(() => {
     return produtos.filter((p) => {
       if (categoriaFiltro !== "__all__" && p.categoria !== categoriaFiltro) return false;
       if (marcaFiltro !== "__all__" && p.marca_nome !== marcaFiltro) return false;
+      return true;
+    });
+  }, [produtos, categoriaFiltro, marcaFiltro]);
+
+  const filtrados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return filteredDados.filter((p) => {
       if (!q) return true;
       return (
         p.codigo.toLowerCase().includes(q) ||
@@ -188,11 +197,11 @@ function ComprasPage() {
         p.categoria.toLowerCase().includes(q)
       );
     });
-  }, [produtos, busca, categoriaFiltro, marcaFiltro]);
+  }, [filteredDados, busca]);
 
   // KPIs
   const kpis = useMemo(() => {
-    const acc = produtos.reduce(
+    const acc = filteredDados.reduce(
       (a, p) => {
         a.custoTotal += p.vlcust * p.qtestq;
         a.vendaTotal += p.vlvend * p.qtestq;
@@ -203,41 +212,61 @@ function ComprasPage() {
       { custoTotal: 0, vendaTotal: 0, qtdEstoque: 0, qtdVendida: 0 },
     );
     return acc;
-  }, [produtos]);
+  }, [filteredDados]);
 
-  // Estoque por categoria
+  // Estoque por categoria — quando há filtro de categoria, mantemos todas para
+  // permitir o toggle no gráfico; a fatia selecionada destaca-se por opacidade.
   const porCategoria = useMemo(() => {
     const map = new Map<string, number>();
-    produtos.forEach((p) => {
+    const base = marcaFiltro !== "__all__"
+      ? produtos.filter((p) => p.marca_nome === marcaFiltro)
+      : produtos;
+    base.forEach((p) => {
       const key = p.categoria || "Sem categoria";
       map.set(key, (map.get(key) ?? 0) + p.vlcust * p.qtestq);
     });
     return Array.from(map, ([categoria, valor]) => ({ categoria, valor }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 8);
-  }, [produtos]);
+  }, [produtos, marcaFiltro]);
 
-  // Top marcas por valor de estoque
+  // Top marcas — mesmo raciocínio: cruzamos com o filtro de categoria oposto.
   const topMarcas = useMemo(() => {
     const map = new Map<string, number>();
-    produtos.forEach((p) => {
+    const base = categoriaFiltro !== "__all__"
+      ? produtos.filter((p) => p.categoria === categoriaFiltro)
+      : produtos;
+    base.forEach((p) => {
       const key = p.marca_nome || "Sem marca";
       map.set(key, (map.get(key) ?? 0) + p.vlcust * p.qtestq);
     });
     return Array.from(map, ([marca, valor]) => ({ marca, valor }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 8);
-  }, [produtos]);
+  }, [produtos, categoriaFiltro]);
 
   // Alertas de reposição — estoque baixo
   const rupturas = useMemo(
     () =>
-      [...produtos]
+      [...filteredDados]
         .filter((p) => p.qtestq > 0 && p.qtestq <= 5)
         .sort((a, b) => a.qtestq - b.qtestq)
         .slice(0, 6),
-    [produtos],
+    [filteredDados],
   );
+
+  const toggleMarca = (marca: string) => {
+    setMarcaFiltro((prev) => (prev === marca ? "__all__" : marca));
+  };
+  const toggleCategoria = (categoria: string) => {
+    setCategoriaFiltro((prev) => (prev === categoria ? "__all__" : categoria));
+  };
+  const limparTodosFiltros = () => {
+    setDataInicio("");
+    setDataFim("");
+    setCategoriaFiltro("__all__");
+    setMarcaFiltro("__all__");
+  };
 
   const kpiCards = [
     {
@@ -423,6 +452,52 @@ function ComprasPage() {
       )}
 
       {/* KPIs */}
+      {filtrosAtivos > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Filtros ativos:</span>
+          {categoriaFiltro !== "__all__" && (
+            <Badge variant="secondary" className="gap-1">
+              Categoria: {categoriaFiltro}
+              <button
+                type="button"
+                onClick={() => setCategoriaFiltro("__all__")}
+                className="ml-1 hover:opacity-70"
+                aria-label="Remover filtro de categoria"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {marcaFiltro !== "__all__" && (
+            <Badge variant="secondary" className="gap-1">
+              Marca: {marcaFiltro}
+              <button
+                type="button"
+                onClick={() => setMarcaFiltro("__all__")}
+                className="ml-1 hover:opacity-70"
+                aria-label="Remover filtro de marca"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {(dataInicio || dataFim) && (
+            <Badge variant="secondary">
+              Período: {dataInicio || "…"} → {dataFim || "…"}
+            </Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={limparTodosFiltros}
+            className="h-7 gap-1 text-xs"
+          >
+            <X className="h-3 w-3" />
+            Limpar filtros
+          </Button>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpiCards.map((c) => (
           <Card key={c.label} className="shadow-[var(--shadow-soft)]">
@@ -494,7 +569,26 @@ function ComprasPage() {
                       }}
                       formatter={(v: number) => formatBRL(v)}
                     />
-                    <Bar dataKey="valor" fill={CHART_TEAL} radius={[0, 4, 4, 0]} />
+                    <Bar
+                      dataKey="valor"
+                      radius={[0, 4, 4, 0]}
+                      cursor="pointer"
+                      onClick={(d: { marca?: string }) => {
+                        if (d?.marca) toggleMarca(d.marca);
+                      }}
+                    >
+                      {topMarcas.map((m) => {
+                        const dim =
+                          marcaFiltro !== "__all__" && marcaFiltro !== m.marca;
+                        return (
+                          <Cell
+                            key={m.marca}
+                            fill={CHART_TEAL}
+                            fillOpacity={dim ? 0.25 : 1}
+                          />
+                        );
+                      })}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -524,10 +618,23 @@ function ComprasPage() {
                       paddingAngle={2}
                       stroke="hsl(0 0% 100%)"
                       strokeWidth={2}
+                      cursor="pointer"
+                      onClick={(d: { categoria?: string }) => {
+                        if (d?.categoria) toggleCategoria(d.categoria);
+                      }}
                     >
-                      {porCategoria.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
+                      {porCategoria.map((c, i) => {
+                        const dim =
+                          categoriaFiltro !== "__all__" &&
+                          categoriaFiltro !== c.categoria;
+                        return (
+                          <Cell
+                            key={c.categoria}
+                            fill={CHART_COLORS[i % CHART_COLORS.length]}
+                            fillOpacity={dim ? 0.25 : 1}
+                          />
+                        );
+                      })}
                     </Pie>
                     <Tooltip
                       contentStyle={{
@@ -543,20 +650,27 @@ function ComprasPage() {
             </div>
             <ul className="mt-3 space-y-1.5 max-h-32 overflow-y-auto">
               {porCategoria.map((c, i) => (
-                <li
-                  key={c.categoria}
-                  className="flex items-center justify-between text-xs"
-                >
-                  <span className="inline-flex items-center gap-2 min-w-0">
-                    <span
-                      className="h-2.5 w-2.5 rounded-sm shrink-0"
-                      style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
-                    />
-                    <span className="text-foreground truncate">{c.categoria}</span>
-                  </span>
-                  <span className="text-muted-foreground tabular-nums shrink-0 ml-2">
-                    {formatBRL(c.valor)}
-                  </span>
+                <li key={c.categoria}>
+                  <button
+                    type="button"
+                    onClick={() => toggleCategoria(c.categoria)}
+                    className={`w-full flex items-center justify-between text-xs rounded px-1 py-0.5 hover:bg-secondary/60 transition ${
+                      categoriaFiltro !== "__all__" && categoriaFiltro !== c.categoria
+                        ? "opacity-40"
+                        : ""
+                    } ${categoriaFiltro === c.categoria ? "bg-secondary" : ""}`}
+                  >
+                    <span className="inline-flex items-center gap-2 min-w-0">
+                      <span
+                        className="h-2.5 w-2.5 rounded-sm shrink-0"
+                        style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
+                      />
+                      <span className="text-foreground truncate">{c.categoria}</span>
+                    </span>
+                    <span className="text-muted-foreground tabular-nums shrink-0 ml-2">
+                      {formatBRL(c.valor)}
+                    </span>
+                  </button>
                 </li>
               ))}
             </ul>

@@ -215,7 +215,7 @@ function ComprasPage() {
     return acc;
   }, [filteredDados]);
 
-  // Estoque por categoria — quando há filtro de categoria, mantemos todas para
+  // Vendas por categoria — quando há filtro de categoria, mantemos todas para
   // permitir o toggle no gráfico; a fatia selecionada destaca-se por opacidade.
   const porCategoria = useMemo(() => {
     const map = new Map<string, number>();
@@ -224,14 +224,14 @@ function ComprasPage() {
       : produtos;
     base.forEach((p) => {
       const key = p.categoria || "Sem categoria";
-      map.set(key, (map.get(key) ?? 0) + p.vlcust * p.qtestq);
+      map.set(key, (map.get(key) ?? 0) + p.vlvend);
     });
     return Array.from(map, ([categoria, valor]) => ({ categoria, valor }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 8);
   }, [produtos, marcaFiltro]);
 
-  // Top marcas — mesmo raciocínio: cruzamos com o filtro de categoria oposto.
+  // Vendas por marca — mesmo raciocínio: cruzamos com o filtro de categoria oposto.
   const topMarcas = useMemo(() => {
     const map = new Map<string, number>();
     const base = categoriaFiltro !== "__all__"
@@ -239,7 +239,7 @@ function ComprasPage() {
       : produtos;
     base.forEach((p) => {
       const key = p.marca_nome || "Sem marca";
-      map.set(key, (map.get(key) ?? 0) + p.vlcust * p.qtestq);
+      map.set(key, (map.get(key) ?? 0) + p.vlvend);
     });
     return Array.from(map, ([marca, valor]) => ({ marca, valor }))
       .sort((a, b) => b.valor - a.valor)

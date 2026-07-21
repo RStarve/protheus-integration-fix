@@ -16,6 +16,8 @@ export interface ProdutoCompra {
 export interface ObterComprasInput {
   loja: string;
   token?: string;
+  dataInicio?: string;
+  dataFim?: string;
 }
 
 const toNumber = (v: unknown): number => {
@@ -35,7 +37,12 @@ export const obterComprasProtheus = createServerFn({ method: "POST" })
     if (!data || typeof data.loja !== "string" || !data.loja.trim()) {
       throw new Error("Loja é obrigatória.");
     }
-    return { loja: data.loja.trim(), token: data.token };
+    return {
+      loja: data.loja.trim(),
+      token: data.token,
+      dataInicio: data.dataInicio?.trim() || undefined,
+      dataFim: data.dataFim?.trim() || undefined,
+    };
   })
   .handler(async ({ data }): Promise<ProdutoCompra[]> => {
     const url = `${PROTHEUS_BASE_URL}/ag/externos/reports/arelcmp`;
@@ -47,10 +54,13 @@ export const obterComprasProtheus = createServerFn({ method: "POST" })
         Accept: "application/json",
       };
       if (data.token) headers.Authorization = `Bearer ${data.token}`;
+      const body: Record<string, string> = { loja: data.loja };
+      if (data.dataInicio) body.dataInicio = data.dataInicio;
+      if (data.dataFim) body.dataFim = data.dataFim;
       response = await fetch(url, {
         method: "POST",
         headers,
-        body: JSON.stringify({ loja: data.loja }),
+        body: JSON.stringify(body),
       });
     } catch (err) {
       console.error("[protheus] falha de rede em arelcmp:", err);

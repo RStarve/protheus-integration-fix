@@ -15,6 +15,7 @@ export interface ProdutoCompra {
 
 export interface ObterComprasInput {
   loja: string;
+  token?: string;
 }
 
 const toNumber = (v: unknown): number => {
@@ -34,19 +35,21 @@ export const obterComprasProtheus = createServerFn({ method: "POST" })
     if (!data || typeof data.loja !== "string" || !data.loja.trim()) {
       throw new Error("Loja é obrigatória.");
     }
-    return { loja: data.loja.trim() };
+    return { loja: data.loja.trim(), token: data.token };
   })
   .handler(async ({ data }): Promise<ProdutoCompra[]> => {
     const url = `${PROTHEUS_BASE_URL}/ag/externos/reports/arelcmp`;
 
     let response: Response;
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      };
+      if (data.token) headers.Authorization = `Bearer ${data.token}`;
       response = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers,
         body: JSON.stringify({ loja: data.loja }),
       });
     } catch (err) {

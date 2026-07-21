@@ -70,14 +70,14 @@ const formatCompact = (n: number) =>
       : `R$ ${n.toFixed(0)}`;
 
 function ComprasPage() {
-  const { filialAtiva } = useAuth();
+  const { filialAtiva, token } = useAuth();
   const loja = filialAtiva?.codigo ?? "";
 
   const [busca, setBusca] = useState("");
 
   const query = useQuery({
     queryKey: ["compras-arelcmp", loja],
-    queryFn: () => obterComprasProtheus({ data: { loja } }),
+    queryFn: () => obterComprasProtheus({ data: { loja, token: token ?? undefined } }),
     enabled: !!loja,
     placeholderData: keepPreviousData,
   });

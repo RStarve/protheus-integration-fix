@@ -47,9 +47,14 @@ export function BranchSelector() {
         <DropdownMenuLabel>Suas lojas</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {filiais.map((f) => {
-          const ativa = filialAtiva?.id === f.id;
+          const ativa = filialAtiva?.codigo === f.codigo;
           return (
-            <DropdownMenuItem key={f.id} onClick={() => setFilialAtiva(f)} className="gap-2">
+            <DropdownMenuItem
+              key={f.codigo}
+              data-value={f.codigo}
+              onClick={() => setFilialAtiva(f)}
+              className="gap-2"
+            >
               <Check className={`h-4 w-4 ${ativa ? "opacity-100 text-brand" : "opacity-0"}`} />
               <div className="flex flex-col">
                 <span className="text-sm font-medium">{f.nome}</span>

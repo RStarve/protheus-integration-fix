@@ -111,7 +111,15 @@ const getCustoPeriodo = (p: { vlcust: number; qtvend: number }) => p.vlcust * p.
 const getValorPeriodo = (p: { vlvend: number; qtvend: number }) => p.vlvend * p.qtvend;
 
 function ComprasPage() {
-  const { filialAtiva, selectedLoja, token, filiais, setFilialAtiva } = useAuth();
+  const { filialAtiva, selectedLoja, token, filiais, setFilialAtiva, usuario } = useAuth();
+  // Login ID do Protheus (nunca o nome de exibição). Fallback estático mantém
+  // o comportamento do último teste estável quando a sessão não trouxer o ID.
+  const userLogin =
+    (usuario?.id?.trim() ||
+      (typeof window !== "undefined"
+        ? (localStorage.getItem("username") ?? "").trim()
+        : "") ||
+      "maique.meireles");
 
   // Fallback local: mesmo que /obterlojas falhe, o relatório continua funcionando.
   const [lojaFiltro, setLojaFiltro] = useState<string>(selectedLoja || "32");
@@ -177,11 +185,12 @@ function ComprasPage() {
     (marcaFiltro !== "__all__" ? 1 : 0);
 
   const query = useQuery({
-    queryKey: ["compras-arelcmp", loja, dataInicio, dataFim],
+    queryKey: ["compras-arelcmp", loja, userLogin, dataInicio, dataFim],
     queryFn: () =>
       obterComprasProtheus({
         data: {
           loja,
+          user: userLogin,
           token: token ?? undefined,
           dataInicio: dataInicio || undefined,
           dataFim: dataFim || undefined,
@@ -199,7 +208,11 @@ function ComprasPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataInicio, dataFim]);
 
-  const produtos = query.data ?? [];
+  const rawErr =
+    query.error instanceof Error ? query.error.message : query.error ? String(query.error) : "";
+  const isUnauthorized = /UNAUTHORIZED|401/i.test(rawErr);
+  // Em 401, limpa a tela em vez de renderizar dados antigos.
+  const produtos = isUnauthorized ? [] : (query.data ?? []);
 
   const categorias = useMemo(
     () =>
@@ -328,8 +341,9 @@ function ComprasPage() {
   ];
 
   const isLoading = query.isLoading || query.isFetching;
-  const errorMsg =
-    query.error instanceof Error ? query.error.message : query.error ? String(query.error) : null;
+  const errorMsg = isUnauthorized
+    ? "Sessão expirada ou usuário sem permissão nesta filial. Verifique seu login."
+    : rawErr || null;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">

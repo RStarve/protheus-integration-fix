@@ -282,7 +282,7 @@ function ComprasPage() {
           <Dialog open={filtrosOpen} onOpenChange={(o) => (o ? abrirFiltros() : setFiltrosOpen(false))}>
             <DialogTrigger asChild>
               <Button variant="outline" className="gap-2" onClick={abrirFiltros}>
-                <Filter className="h-4 w-4" />
+                <Filter className="h-4 w-4 text-red-600" />
                 Filtros
                 {filtrosAtivos > 0 && (
                   <Badge variant="secondary" className="ml-1 h-5 px-1.5 tabular-nums">

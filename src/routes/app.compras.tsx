@@ -60,6 +60,22 @@ import { obterComprasProtheus } from "@/lib/protheus-compras.functions";
 import { formatBRL } from "@/lib/format";
 
 export const Route = createFileRoute("/app/compras")({
+  head: () => ({
+    meta: [
+      { title: "Relatório de Compras | Protheus" },
+      {
+        name: "description",
+        content: "Relatório de compras, vendas, margem, estoque, marcas e categorias integrado ao Protheus.",
+      },
+      { property: "og:title", content: "Relatório de Compras | Protheus" },
+      {
+        property: "og:description",
+        content: "Acompanhe compras, vendas, margem e estoque por filial com dados do Protheus.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: ComprasPage,
 });
 
@@ -87,6 +103,11 @@ const formatCompact = (n: number) =>
     : n >= 1_000
       ? `R$ ${(n / 1_000).toFixed(0)}k`
       : `R$ ${n.toFixed(0)}`;
+
+// No retorno atual do arelcmp, o Protheus entrega os valores financeiros invertidos:
+// `vlvend` representa o custo e `vlcust` representa a venda.
+const getCustoPeriodo = (p: { vlvend: number; qtvend: number }) => p.vlvend * p.qtvend;
+const getValorPeriodo = (p: { vlcust: number; qtvend: number }) => p.vlcust * p.qtvend;
 
 function ComprasPage() {
   const { filialAtiva, selectedLoja, token, filiais, setFilialAtiva } = useAuth();
@@ -163,6 +184,13 @@ function ComprasPage() {
     placeholderData: keepPreviousData,
   });
 
+  useEffect(() => {
+    if (!loja) return;
+    query.refetch();
+    // Garante atualização imediata quando o período aplicado muda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataInicio, dataFim]);
+
   const produtos = query.data ?? [];
 
   const categorias = useMemo(
@@ -203,8 +231,8 @@ function ComprasPage() {
   const kpis = useMemo(() => {
     const acc = filteredDados.reduce(
       (a, p) => {
-        a.custoTotal += p.vlcust * p.qtvend;
-        a.vendaTotal += p.vlvend * p.qtvend;
+        a.custoTotal += getCustoPeriodo(p);
+        a.vendaTotal += getValorPeriodo(p);
         a.qtdEstoque += p.qtestq;
         a.qtdVendida += p.qtvend;
         return a;
@@ -221,7 +249,7 @@ function ComprasPage() {
     const map = new Map<string, number>();
     filteredDados.forEach((p) => {
       const key = p.categoria || "Sem categoria";
-      map.set(key, (map.get(key) ?? 0) + p.vlvend * p.qtvend);
+      map.set(key, (map.get(key) ?? 0) + getValorPeriodo(p));
     });
     return Array.from(map, ([categoria, valor]) => ({ categoria, valor }))
       .sort((a, b) => b.valor - a.valor)
@@ -233,7 +261,7 @@ function ComprasPage() {
     const map = new Map<string, number>();
     filteredDados.forEach((p) => {
       const key = p.marca_nome || "Sem marca";
-      map.set(key, (map.get(key) ?? 0) + p.vlvend * p.qtvend);
+      map.set(key, (map.get(key) ?? 0) + getValorPeriodo(p));
     });
     return Array.from(map, ([marca, valor]) => ({ marca, valor }))
       .sort((a, b) => b.valor - a.valor)
@@ -763,7 +791,9 @@ function ComprasPage() {
                   </TableRow>
                 ) : (
                   filtrados.slice(0, 200).map((p) => {
-                    const markupLinha = p.vlcust > 0 ? ((p.vlvend - p.vlcust) / p.vlcust) * 100 : 0;
+                    const custoLinha = getCustoPeriodo(p);
+                    const valorLinha = getValorPeriodo(p);
+                    const markupLinha = custoLinha > 0 ? ((valorLinha - custoLinha) / custoLinha) * 100 : 0;
                     return (
                       <TableRow key={`${p.codigo}-${p.descri}`}>
                         <TableCell className="tabular-nums text-muted-foreground">
@@ -789,10 +819,10 @@ function ComprasPage() {
                           {p.qtvend}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {formatBRL(p.vlcust * p.qtvend)}
+                          {formatBRL(custoLinha)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {formatBRL(p.vlvend * p.qtvend)}
+                          {formatBRL(valorLinha)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {markupLinha.toFixed(2).replace(".", ",")}%

@@ -55,8 +55,14 @@ export const obterLojasProtheus = createServerFn({ method: "POST" })
         (parsed && typeof parsed === "object" && parsed !== null
           ? ((parsed as Record<string, unknown>).message ??
             (parsed as Record<string, unknown>).error)
-          : null) ?? `Falha ao buscar lojas (HTTP ${response.status}).`;
-      throw new Error(String(message));
+          : null) ?? `HTTP ${response.status}`;
+      console.warn(
+        "[protheus] /obterlojas rejeitou requisição:",
+        response.status,
+        String(message),
+      );
+      // Não lança: retorna lista vazia para que a UI trate como "sem filiais".
+      return [];
     }
 
     // Aceita vários formatos: array direto, { lojas: [] }, { data: [] }, { result: [] }

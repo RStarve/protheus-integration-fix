@@ -209,7 +209,7 @@ function ComprasPage() {
         a.qtdVendida += p.qtvend;
         return a;
       },
-      { custoTotal: 0, vendaTotal: 0, qtdEstoque: 0, qtdVendida: 0 },
+      { custoTotal: 0, vendaTotal: 0, qtdEstoque: 0, qtdVendida: 0, markup: 0 },
     );
     acc.markup = acc.custoTotal > 0 ? ((acc.vendaTotal - acc.custoTotal) / acc.custoTotal) * 100 : 0;
     return acc;

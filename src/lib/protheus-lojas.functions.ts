@@ -22,6 +22,8 @@ export const obterLojasProtheus = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<Filial[]> => {
     const url = `${PROTHEUS_BASE_URL}/ag/externos/functions/obterlojas`;
 
+    console.log("[protheus] POST /obterlojas — user:", JSON.stringify(data.user));
+
     let response: Response;
     try {
       const headers: Record<string, string> = {
@@ -40,6 +42,7 @@ export const obterLojasProtheus = createServerFn({ method: "POST" })
     }
 
     const raw = await response.text();
+    console.log("[protheus] /obterlojas status:", response.status, "raw:", raw?.slice(0, 500));
     let parsed: unknown = null;
     try {
       parsed = raw ? JSON.parse(raw) : null;
@@ -61,17 +64,46 @@ export const obterLojasProtheus = createServerFn({ method: "POST" })
     if (Array.isArray(parsed)) lista = parsed;
     else if (parsed && typeof parsed === "object") {
       const o = parsed as Record<string, unknown>;
-      const cand = o.lojas ?? o.data ?? o.result ?? o.filiais ?? o.stores;
+      const cand =
+        o.lojas ??
+        o.data ??
+        o.result ??
+        o.filiais ??
+        o.stores ??
+        o.retorno ??
+        o.records ??
+        o.items;
       if (Array.isArray(cand)) lista = cand;
     }
+
+    console.log("[protheus] /obterlojas normalizado — total:", lista.length);
 
     return lista.map((item, idx) => {
       const o = (item ?? {}) as Record<string, unknown>;
       const codigo = String(
-        o.codigo ?? o.code ?? o.cod ?? o.filial ?? o.loja ?? o.id ?? idx + 1,
+        o.codigo ??
+          o.code ??
+          o.cod ??
+          o.cod_filial ??
+          o.codFilial ??
+          o.cCodFilial ??
+          o.filial ??
+          o.M0_CODFIL ??
+          o.loja ??
+          o.id ??
+          idx + 1,
       );
       const nome = String(
-        o.nome ?? o.name ?? o.descricao ?? o.description ?? `Loja ${codigo}`,
+        o.nome ??
+          o.name ??
+          o.descricao ??
+          o.descrição ??
+          o.description ??
+          o.desc ??
+          o.fantasia ??
+          o.razao ??
+          o.M0_FILIAL ??
+          `Loja ${codigo}`,
       );
       const uf = String(o.uf ?? o.estado ?? o.state ?? "").toUpperCase();
       return {

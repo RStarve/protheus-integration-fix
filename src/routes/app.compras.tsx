@@ -122,8 +122,15 @@ function ComprasPage() {
   const loja = lojaFiltro.trim();
 
   const [busca, setBusca] = useState("");
-  const [dataInicio, setDataInicio] = useState("");
-  const [dataFim, setDataFim] = useState("");
+  const { inicio: defaultInicio, fim: defaultFim } = useMemo(() => {
+    const now = new Date();
+    const first = new Date(now.getFullYear(), now.getMonth(), 1);
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    return { inicio: iso(first), fim: iso(now) };
+  }, []);
+  const [dataInicio, setDataInicio] = useState(defaultInicio);
+  const [dataFim, setDataFim] = useState(defaultFim);
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>("__all__");
   const [marcaFiltro, setMarcaFiltro] = useState<string>("__all__");
 

@@ -54,9 +54,21 @@ export const obterComprasProtheus = createServerFn({ method: "POST" })
         Accept: "application/json",
       };
       if (data.token) headers.Authorization = `Bearer ${data.token}`;
+      // YYYY-MM-DD -> YYYYMMDD (padrão Protheus). Enviamos as duas variações
+      // de nome para compatibilidade com o backend.
+      const toProtheusDate = (v?: string) =>
+        v ? v.replace(/-/g, "").slice(0, 8) : undefined;
+      const di = toProtheusDate(data.dataInicio);
+      const df = toProtheusDate(data.dataFim);
       const body: Record<string, string> = { loja: data.loja };
-      if (data.dataInicio) body.dataInicio = data.dataInicio;
-      if (data.dataFim) body.dataFim = data.dataFim;
+      if (di) {
+        body.dataInicio = di;
+        body.data_inicio = di;
+      }
+      if (df) {
+        body.dataFim = df;
+        body.data_fim = df;
+      }
       response = await fetch(url, {
         method: "POST",
         headers,

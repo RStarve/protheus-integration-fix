@@ -70,8 +70,11 @@ const formatCompact = (n: number) =>
       : `R$ ${n.toFixed(0)}`;
 
 function ComprasPage() {
-  const { filialAtiva, selectedLoja, token } = useAuth();
-  const loja = selectedLoja;
+  const { filialAtiva, selectedLoja, token, usuario } = useAuth();
+  // MODO DEBUG: força loja "32" para isolar problema de permissão/estado
+  const FORCE_LOJA = "32";
+  const [forcarLoja, setForcarLoja] = useState(true);
+  const loja = forcarLoja ? FORCE_LOJA : selectedLoja;
 
   const [busca, setBusca] = useState("");
 
@@ -175,6 +178,56 @@ function ComprasPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      {/* Painel de Debug (temporário) */}
+      <Card className="border-dashed border-brand/40 bg-brand-soft/30">
+        <CardContent className="p-4 space-y-2 text-xs">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="font-semibold uppercase tracking-wide text-brand">
+              Modo Debug
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setForcarLoja(true);
+                query.refetch();
+              }}
+            >
+              Buscar Loja 32 (Teste TI)
+            </Button>
+          </div>
+          <div className="grid gap-1 sm:grid-cols-2 font-mono">
+            <div>
+              <span className="text-muted-foreground">Username Logado: </span>
+              <span className="font-medium">
+                {usuario?.id || usuario?.nome || "—"}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">selectedLoja (dropdown): </span>
+              <span className="font-medium">{JSON.stringify(selectedLoja)}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Loja enviada p/ /arelcmp: </span>
+              <span className="font-medium">{JSON.stringify(loja)}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Modo: </span>
+              <span className="font-medium">
+                {forcarLoja ? "HARDCODE 32" : "dropdown"}
+              </span>{" "}
+              <button
+                type="button"
+                className="underline text-brand ml-1"
+                onClick={() => setForcarLoja((v) => !v)}
+              >
+                alternar
+              </button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Relatório de Compras & Estoque</h1>

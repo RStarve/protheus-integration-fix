@@ -2,7 +2,6 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { BranchSelector } from "@/components/branch-selector";
 import { UserMenu } from "@/components/user-menu";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,7 +29,6 @@ function AppLayout() {
             <SidebarTrigger className="text-foreground" />
             <Separator orientation="vertical" className="h-6" />
             <div className="flex-1" />
-            <BranchSelector />
             <UserMenu />
           </header>
           <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">

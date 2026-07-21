@@ -215,36 +215,30 @@ function ComprasPage() {
     return acc;
   }, [filteredDados]);
 
-  // Vendas por categoria — quando há filtro de categoria, mantemos todas para
-  // permitir o toggle no gráfico; a fatia selecionada destaca-se por opacidade.
+  // Vendas por categoria — usa o mesmo dataset filtrado das KPIs/tabela
+  // para que todos os cartões e gráficos reflitam exatamente os mesmos filtros.
   const porCategoria = useMemo(() => {
     const map = new Map<string, number>();
-    const base = marcaFiltro !== "__all__"
-      ? produtos.filter((p) => p.marca_nome === marcaFiltro)
-      : produtos;
-    base.forEach((p) => {
+    filteredDados.forEach((p) => {
       const key = p.categoria || "Sem categoria";
       map.set(key, (map.get(key) ?? 0) + p.vlvend * p.qtvend);
     });
     return Array.from(map, ([categoria, valor]) => ({ categoria, valor }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 8);
-  }, [produtos, marcaFiltro]);
+  }, [filteredDados]);
 
-  // Vendas por marca — mesmo raciocínio: cruzamos com o filtro de categoria oposto.
+  // Vendas por marca — idem, alimentado pelo dataset já filtrado.
   const topMarcas = useMemo(() => {
     const map = new Map<string, number>();
-    const base = categoriaFiltro !== "__all__"
-      ? produtos.filter((p) => p.categoria === categoriaFiltro)
-      : produtos;
-    base.forEach((p) => {
+    filteredDados.forEach((p) => {
       const key = p.marca_nome || "Sem marca";
       map.set(key, (map.get(key) ?? 0) + p.vlvend * p.qtvend);
     });
     return Array.from(map, ([marca, valor]) => ({ marca, valor }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 8);
-  }, [produtos, categoriaFiltro]);
+  }, [filteredDados]);
 
   // Alertas de reposição — estoque baixo
   const rupturas = useMemo(

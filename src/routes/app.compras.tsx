@@ -650,20 +650,27 @@ function ComprasPage() {
             </div>
             <ul className="mt-3 space-y-1.5 max-h-32 overflow-y-auto">
               {porCategoria.map((c, i) => (
-                <li
-                  key={c.categoria}
-                  className="flex items-center justify-between text-xs"
-                >
-                  <span className="inline-flex items-center gap-2 min-w-0">
-                    <span
-                      className="h-2.5 w-2.5 rounded-sm shrink-0"
-                      style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
-                    />
-                    <span className="text-foreground truncate">{c.categoria}</span>
-                  </span>
-                  <span className="text-muted-foreground tabular-nums shrink-0 ml-2">
-                    {formatBRL(c.valor)}
-                  </span>
+                <li key={c.categoria}>
+                  <button
+                    type="button"
+                    onClick={() => toggleCategoria(c.categoria)}
+                    className={`w-full flex items-center justify-between text-xs rounded px-1 py-0.5 hover:bg-secondary/60 transition ${
+                      categoriaFiltro !== "__all__" && categoriaFiltro !== c.categoria
+                        ? "opacity-40"
+                        : ""
+                    } ${categoriaFiltro === c.categoria ? "bg-secondary" : ""}`}
+                  >
+                    <span className="inline-flex items-center gap-2 min-w-0">
+                      <span
+                        className="h-2.5 w-2.5 rounded-sm shrink-0"
+                        style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
+                      />
+                      <span className="text-foreground truncate">{c.categoria}</span>
+                    </span>
+                    <span className="text-muted-foreground tabular-nums shrink-0 ml-2">
+                      {formatBRL(c.valor)}
+                    </span>
+                  </button>
                 </li>
               ))}
             </ul>

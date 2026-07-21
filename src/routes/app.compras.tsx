@@ -199,22 +199,23 @@ function ComprasPage() {
     });
   }, [filteredDados, busca]);
 
-  // KPIs
+  // KPIs — relatório de vendas/margem: os valores financeiros já são totais da linha
   const kpis = useMemo(() => {
     const acc = filteredDados.reduce(
       (a, p) => {
-        a.custoTotal += p.vlcust * p.qtestq;
-        a.vendaTotal += p.vlvend * p.qtestq;
+        a.custoTotal += p.vlcust;
+        a.vendaTotal += p.vlvend;
         a.qtdEstoque += p.qtestq;
         a.qtdVendida += p.qtvend;
         return a;
       },
-      { custoTotal: 0, vendaTotal: 0, qtdEstoque: 0, qtdVendida: 0 },
+      { custoTotal: 0, vendaTotal: 0, qtdEstoque: 0, qtdVendida: 0, markup: 0 },
     );
+    acc.markup = acc.custoTotal > 0 ? ((acc.vendaTotal - acc.custoTotal) / acc.custoTotal) * 100 : 0;
     return acc;
   }, [filteredDados]);
 
-  // Estoque por categoria — quando há filtro de categoria, mantemos todas para
+  // Vendas por categoria — quando há filtro de categoria, mantemos todas para
   // permitir o toggle no gráfico; a fatia selecionada destaca-se por opacidade.
   const porCategoria = useMemo(() => {
     const map = new Map<string, number>();
@@ -223,14 +224,14 @@ function ComprasPage() {
       : produtos;
     base.forEach((p) => {
       const key = p.categoria || "Sem categoria";
-      map.set(key, (map.get(key) ?? 0) + p.vlcust * p.qtestq);
+      map.set(key, (map.get(key) ?? 0) + p.vlvend);
     });
     return Array.from(map, ([categoria, valor]) => ({ categoria, valor }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 8);
   }, [produtos, marcaFiltro]);
 
-  // Top marcas — mesmo raciocínio: cruzamos com o filtro de categoria oposto.
+  // Vendas por marca — mesmo raciocínio: cruzamos com o filtro de categoria oposto.
   const topMarcas = useMemo(() => {
     const map = new Map<string, number>();
     const base = categoriaFiltro !== "__all__"
@@ -238,7 +239,7 @@ function ComprasPage() {
       : produtos;
     base.forEach((p) => {
       const key = p.marca_nome || "Sem marca";
-      map.set(key, (map.get(key) ?? 0) + p.vlcust * p.qtestq);
+      map.set(key, (map.get(key) ?? 0) + p.vlvend);
     });
     return Array.from(map, ([marca, valor]) => ({ marca, valor }))
       .sort((a, b) => b.valor - a.valor)
@@ -270,23 +271,28 @@ function ComprasPage() {
 
   const kpiCards = [
     {
-      label: "Custo total em estoque",
+      label: "Custo",
       value: formatBRL(kpis.custoTotal),
       icon: ShoppingCart,
     },
     {
-      label: "Valor de venda em estoque",
+      label: "Valor",
       value: formatBRL(kpis.vendaTotal),
       icon: DollarSign,
     },
     {
-      label: "Quantidade em estoque",
-      value: kpis.qtdEstoque.toLocaleString("pt-BR"),
+      label: "Markup",
+      value: `${kpis.markup.toFixed(2).replace(".", ",")}%`,
+      icon: Package,
+    },
+    {
+      label: "Quantidade",
+      value: kpis.qtdVendida.toLocaleString("pt-BR"),
       icon: Boxes,
     },
     {
-      label: "Quantidade vendida",
-      value: kpis.qtdVendida.toLocaleString("pt-BR"),
+      label: "Estoque",
+      value: kpis.qtdEstoque.toLocaleString("pt-BR"),
       icon: Package,
     },
   ];
@@ -498,7 +504,7 @@ function ComprasPage() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {kpiCards.map((c) => (
           <Card key={c.label} className="shadow-[var(--shadow-soft)]">
             <CardContent className="p-5">
@@ -529,7 +535,7 @@ function ComprasPage() {
         <Card className="lg:col-span-2 shadow-[var(--shadow-soft)]">
           <CardContent className="p-4 sm:p-6">
             <h2 className="text-base font-semibold tracking-tight mb-4">
-              Top marcas por valor em estoque
+              Vendas por Marca
             </h2>
             <div className="h-72">
               {isLoading && topMarcas.length === 0 ? (
@@ -598,7 +604,7 @@ function ComprasPage() {
 
         <Card className="shadow-[var(--shadow-soft)]">
           <CardContent className="p-4 sm:p-6">
-            <h2 className="text-base font-semibold tracking-tight mb-4">Estoque por categoria</h2>
+            <h2 className="text-base font-semibold tracking-tight mb-4">Vendas por Categoria</h2>
             <div className="h-72">
               {isLoading && porCategoria.length === 0 ? (
                 <Skeleton className="h-full w-full" />
@@ -747,52 +753,59 @@ function ComprasPage() {
                   <TableHead>Categoria</TableHead>
                   <TableHead className="text-right">Estoque</TableHead>
                   <TableHead className="text-right">Qtd. Vendida</TableHead>
-                  <TableHead className="text-right">Valor Venda</TableHead>
                   <TableHead className="text-right">Valor Custo</TableHead>
+                  <TableHead className="text-right">Valor Venda</TableHead>
+                  <TableHead className="text-right">Markup %</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading && produtos.length === 0 ? (
-                  <TableSkeleton rows={8} cols={8} />
+                  <TableSkeleton rows={8} cols={9} />
                 ) : filtrados.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
                       {loja ? "Nenhum produto encontrado." : "Selecione uma loja."}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtrados.slice(0, 200).map((p) => (
-                    <TableRow key={`${p.codigo}-${p.descri}`}>
-                      <TableCell className="tabular-nums text-muted-foreground">
-                        {p.codigo}
-                      </TableCell>
-                      <TableCell className="font-medium max-w-[280px] truncate">
-                        {p.descri}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{p.marca_nome}</TableCell>
-                      <TableCell className="text-muted-foreground">{p.categoria}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        <span
-                          className={
-                            p.qtestq > 0 && p.qtestq <= 5
-                              ? "inline-block px-2 py-0.5 rounded bg-brand-soft text-brand font-medium"
-                              : ""
-                          }
-                        >
-                          {p.qtestq}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">
-                        {p.qtvend}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatBRL(p.vlvend)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatBRL(p.vlcust)}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  filtrados.slice(0, 200).map((p) => {
+                    const markupLinha = p.vlcust > 0 ? ((p.vlvend - p.vlcust) / p.vlcust) * 100 : 0;
+                    return (
+                      <TableRow key={`${p.codigo}-${p.descri}`}>
+                        <TableCell className="tabular-nums text-muted-foreground">
+                          {p.codigo}
+                        </TableCell>
+                        <TableCell className="font-medium max-w-[280px] truncate">
+                          {p.descri}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{p.marca_nome}</TableCell>
+                        <TableCell className="text-muted-foreground">{p.categoria}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          <span
+                            className={
+                              p.qtestq > 0 && p.qtestq <= 5
+                                ? "inline-block px-2 py-0.5 rounded bg-brand-soft text-brand font-medium"
+                                : ""
+                            }
+                          >
+                            {p.qtestq}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                          {p.qtvend}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatBRL(p.vlcust)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatBRL(p.vlvend)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {markupLinha.toFixed(2).replace(".", ",")}%
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

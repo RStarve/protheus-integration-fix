@@ -6,6 +6,7 @@ interface AuthState {
   usuario: Usuario | null;
   token: string | null;
   filialAtiva: Filial | null;
+  selectedLoja: string;
   filiais: Filial[];
   filiaisLoading: boolean;
   filiaisError: string | null;
@@ -21,7 +22,7 @@ const STORAGE_KEY = "protheus.session.v1";
 interface Persisted {
   token: string;
   usuario: Usuario;
-  filialAtivaId?: string;
+  filialAtivaCodigo?: string;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -32,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [filiaisLoading, setFiliaisLoading] = useState(false);
   const [filiaisError, setFiliaisError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  const [pendingFilialId, setPendingFilialId] = useState<string | undefined>();
+  const [pendingFilialCodigo, setPendingFilialCodigo] = useState<string | undefined>();
 
   useEffect(() => {
     try {
@@ -41,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const p: Persisted = JSON.parse(raw);
         setToken(p.token);
         setUsuario(p.usuario);
-        setPendingFilialId(p.filialAtivaId);
+        setPendingFilialCodigo(p.filialAtivaCodigo);
       }
     } catch {
       // ignore
@@ -59,16 +60,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setFiliaisLoading(true);
     setFiliaisError(null);
-    obterLojasProtheus({ data: { user: usuario.id || usuario.nome, token: token ?? undefined } })
+    const username =
+      usuario.id ||
+      usuario.nome ||
+      (typeof window !== "undefined" ? localStorage.getItem("username") ?? "" : "");
+    if (!username) {
+      setFiliaisError("Usuário não identificado. Faça login novamente.");
+      setFiliaisLoading(false);
+      return;
+    }
+    obterLojasProtheus({ data: { user: username, token: token ?? undefined } })
       .then((lojas) => {
         if (cancelled) return;
         setFiliais(lojas);
-        // Regra: apenas 1 loja -> seleciona automaticamente
+        // Auto-seleciona: mantém a persistida (por código) OU a primeira loja do array
         const escolhida =
-          lojas.find((l) => l.id === pendingFilialId) ??
-          (lojas.length === 1 ? lojas[0] : lojas[0] ?? null);
+          lojas.find((l) => l.codigo === pendingFilialCodigo) ?? lojas[0] ?? null;
         setFilialAtivaState(escolhida);
-        if (escolhida) persist({ filialAtivaId: escolhida.id });
+        if (escolhida) persist({ filialAtivaCodigo: escolhida.codigo });
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -105,13 +114,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setSession = ({ token, usuario }: { token: string; usuario: Usuario }) => {
     setToken(token);
     setUsuario(usuario);
-    setPendingFilialId(undefined);
-    persist({ token, usuario, filialAtivaId: undefined });
+    setPendingFilialCodigo(undefined);
+    persist({ token, usuario, filialAtivaCodigo: undefined });
+    if (typeof window !== "undefined") {
+      const uname = usuario.id || usuario.nome;
+      if (uname) localStorage.setItem("username", uname);
+    }
   };
 
   const setFilialAtiva = (f: Filial) => {
     setFilialAtivaState(f);
-    persist({ filialAtivaId: f.id });
+    persist({ filialAtivaCodigo: f.codigo });
   };
 
   const logout = () => {
@@ -120,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setFilialAtivaState(null);
     setFiliais([]);
     persist(null);
+    if (typeof window !== "undefined") localStorage.removeItem("username");
   };
 
   if (!hydrated) return null;
@@ -130,6 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         usuario,
         token,
         filialAtiva,
+        selectedLoja: filialAtiva?.codigo ?? "",
         filiais,
         filiaisLoading,
         filiaisError,

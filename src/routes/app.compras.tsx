@@ -795,10 +795,10 @@ function ComprasPage() {
                           {p.qtvend}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {formatBRL(p.vlcust)}
+                          {formatBRL(p.vlcust * p.qtvend)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {formatBRL(p.vlvend)}
+                          {formatBRL(p.vlvend * p.qtvend)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {markupLinha.toFixed(2).replace(".", ",")}%

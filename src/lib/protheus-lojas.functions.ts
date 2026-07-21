@@ -5,6 +5,7 @@ const PROTHEUS_BASE_URL = "https://appcometa.fortiddns.com";
 
 export interface ObterLojasInput {
   user: string;
+  token?: string;
 }
 
 /**
@@ -16,19 +17,21 @@ export const obterLojasProtheus = createServerFn({ method: "POST" })
     if (!data || typeof data.user !== "string" || !data.user.trim()) {
       throw new Error("Usuário é obrigatório para buscar lojas.");
     }
-    return { user: data.user.trim() };
+    return { user: data.user.trim(), token: data.token };
   })
   .handler(async ({ data }): Promise<Filial[]> => {
     const url = `${PROTHEUS_BASE_URL}/ag/externos/functions/obterlojas`;
 
     let response: Response;
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      };
+      if (data.token) headers.Authorization = `Bearer ${data.token}`;
       response = await fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers,
         body: JSON.stringify({ user: data.user }),
       });
     } catch (err) {

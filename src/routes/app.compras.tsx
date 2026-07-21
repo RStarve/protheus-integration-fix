@@ -203,8 +203,8 @@ function ComprasPage() {
   const kpis = useMemo(() => {
     const acc = filteredDados.reduce(
       (a, p) => {
-        a.custoTotal += p.vlcust;
-        a.vendaTotal += p.vlvend;
+        a.custoTotal += p.vlcust * p.qtvend;
+        a.vendaTotal += p.vlvend * p.qtvend;
         a.qtdEstoque += p.qtestq;
         a.qtdVendida += p.qtvend;
         return a;
@@ -224,7 +224,7 @@ function ComprasPage() {
       : produtos;
     base.forEach((p) => {
       const key = p.categoria || "Sem categoria";
-      map.set(key, (map.get(key) ?? 0) + p.vlvend);
+      map.set(key, (map.get(key) ?? 0) + p.vlvend * p.qtvend);
     });
     return Array.from(map, ([categoria, valor]) => ({ categoria, valor }))
       .sort((a, b) => b.valor - a.valor)
@@ -239,7 +239,7 @@ function ComprasPage() {
       : produtos;
     base.forEach((p) => {
       const key = p.marca_nome || "Sem marca";
-      map.set(key, (map.get(key) ?? 0) + p.vlvend);
+      map.set(key, (map.get(key) ?? 0) + p.vlvend * p.qtvend);
     });
     return Array.from(map, ([marca, valor]) => ({ marca, valor }))
       .sort((a, b) => b.valor - a.valor)
@@ -795,10 +795,10 @@ function ComprasPage() {
                           {p.qtvend}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {formatBRL(p.vlcust)}
+                          {formatBRL(p.vlcust * p.qtvend)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {formatBRL(p.vlvend)}
+                          {formatBRL(p.vlvend * p.qtvend)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {markupLinha.toFixed(2).replace(".", ",")}%

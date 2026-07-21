@@ -239,7 +239,7 @@ function ComprasPage() {
       : produtos;
     base.forEach((p) => {
       const key = p.marca_nome || "Sem marca";
-      map.set(key, (map.get(key) ?? 0) + p.vlvend);
+      map.set(key, (map.get(key) ?? 0) + p.vlvend * p.qtvend);
     });
     return Array.from(map, ([marca, valor]) => ({ marca, valor }))
       .sort((a, b) => b.valor - a.valor)

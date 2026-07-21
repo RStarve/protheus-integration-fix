@@ -15,6 +15,7 @@ export interface ProdutoCompra {
 
 export interface ObterComprasInput {
   loja: string;
+  user?: string;
   token?: string;
   dataInicio?: string;
   dataFim?: string;
@@ -39,6 +40,7 @@ export const obterComprasProtheus = createServerFn({ method: "POST" })
     }
     return {
       loja: data.loja.trim(),
+      user: data.user?.trim() || undefined,
       token: data.token,
       dataInicio: data.dataInicio?.trim() || undefined,
       dataFim: data.dataFim?.trim() || undefined,
@@ -61,6 +63,10 @@ export const obterComprasProtheus = createServerFn({ method: "POST" })
       const di = toProtheusDate(data.dataInicio);
       const df = toProtheusDate(data.dataFim);
       const body: Record<string, string> = { loja: data.loja };
+      if (data.user) {
+        body.user = data.user;
+        body.usuario = data.user;
+      }
       if (di) {
         body.dataInicio = di;
         body.data_inicio = di;
@@ -81,6 +87,11 @@ export const obterComprasProtheus = createServerFn({ method: "POST" })
 
     const raw = await response.text();
     if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error(
+          "UNAUTHORIZED: Sessão expirada ou usuário sem permissão nesta filial. Verifique seu login.",
+        );
+      }
       throw new Error(`Falha ao buscar compras (HTTP ${response.status}).`);
     }
 

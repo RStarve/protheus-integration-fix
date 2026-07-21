@@ -271,23 +271,28 @@ function ComprasPage() {
 
   const kpiCards = [
     {
-      label: "Custo total em estoque",
+      label: "Custo",
       value: formatBRL(kpis.custoTotal),
       icon: ShoppingCart,
     },
     {
-      label: "Valor de venda em estoque",
+      label: "Valor",
       value: formatBRL(kpis.vendaTotal),
       icon: DollarSign,
     },
     {
-      label: "Quantidade em estoque",
-      value: kpis.qtdEstoque.toLocaleString("pt-BR"),
+      label: "Markup",
+      value: `${kpis.markup.toFixed(2).replace(".", ",")}%`,
+      icon: Package,
+    },
+    {
+      label: "Quantidade",
+      value: kpis.qtdVendida.toLocaleString("pt-BR"),
       icon: Boxes,
     },
     {
-      label: "Quantidade vendida",
-      value: kpis.qtdVendida.toLocaleString("pt-BR"),
+      label: "Estoque",
+      value: kpis.qtdEstoque.toLocaleString("pt-BR"),
       icon: Package,
     },
   ];

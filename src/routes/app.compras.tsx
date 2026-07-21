@@ -753,8 +753,9 @@ function ComprasPage() {
                   <TableHead>Categoria</TableHead>
                   <TableHead className="text-right">Estoque</TableHead>
                   <TableHead className="text-right">Qtd. Vendida</TableHead>
-                  <TableHead className="text-right">Valor Venda</TableHead>
                   <TableHead className="text-right">Valor Custo</TableHead>
+                  <TableHead className="text-right">Valor Venda</TableHead>
+                  <TableHead className="text-right">Markup %</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

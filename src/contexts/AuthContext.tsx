@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setFiliaisLoading(true);
     setFiliaisError(null);
-    obterLojasProtheus({ data: { user: usuario.id || usuario.nome } })
+    obterLojasProtheus({ data: { user: usuario.id || usuario.nome, token: token ?? undefined } })
       .then((lojas) => {
         if (cancelled) return;
         setFiliais(lojas);

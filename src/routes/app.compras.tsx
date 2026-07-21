@@ -604,7 +604,7 @@ function ComprasPage() {
 
         <Card className="shadow-[var(--shadow-soft)]">
           <CardContent className="p-4 sm:p-6">
-            <h2 className="text-base font-semibold tracking-tight mb-4">Estoque por categoria</h2>
+            <h2 className="text-base font-semibold tracking-tight mb-4">Vendas por Categoria</h2>
             <div className="h-72">
               {isLoading && porCategoria.length === 0 ? (
                 <Skeleton className="h-full w-full" />

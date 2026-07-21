@@ -104,10 +104,11 @@ const formatCompact = (n: number) =>
       ? `R$ ${(n / 1_000).toFixed(0)}k`
       : `R$ ${n.toFixed(0)}`;
 
-// No retorno atual do arelcmp, o Protheus entrega os valores financeiros invertidos:
-// `vlvend` representa o custo e `vlcust` representa a venda.
-const getCustoPeriodo = (p: { vlvend: number; qtvend: number }) => p.vlvend * p.qtvend;
-const getValorPeriodo = (p: { vlcust: number; qtvend: number }) => p.vlcust * p.qtvend;
+// O Protheus (arelcmp) entrega os totais unitários em `vlcust` (custo) e
+// `vlvend` (venda). Multiplicamos pela quantidade vendida no período para
+// obter os totais do período — bate com o Power BI de referência.
+const getCustoPeriodo = (p: { vlcust: number; qtvend: number }) => p.vlcust * p.qtvend;
+const getValorPeriodo = (p: { vlvend: number; qtvend: number }) => p.vlvend * p.qtvend;
 
 function ComprasPage() {
   const { filialAtiva, selectedLoja, token, filiais, setFilialAtiva } = useAuth();

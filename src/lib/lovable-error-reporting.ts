@@ -5,27 +5,19 @@ type LovableErrorOptions = {
 };
 
 type LovableEvents = {
-  captureException?: (
-    error: unknown,
-    context?: Record<string, unknown>,
-    options?: LovableErrorOptions,
-  ) => void;
+  captureException?: (error: unknown, context?: Record<string, unknown>, options?: LovableErrorOptions) => void;
 };
 
 declare global {
   interface Window {
-    __lovableEvents?: LovableEvents;
-    __lovableReportRuntimeError?: (payload: {
-      message: string;
-      stack?: string;
-      filename?: string;
-    }) => void;
+    __Events?: LovableEvents;
+    __ReportRuntimeError?: (payload: { message: string; stack?: string; filename?: string }) => void;
   }
 }
 
 export function reportLovableError(error: unknown, context: Record<string, unknown> = {}) {
   if (typeof window === "undefined") return;
-  window.__lovableEvents?.captureException?.(
+  window.__Events?.captureException?.(
     error,
     {
       source: "react_error_boundary",
@@ -49,7 +41,7 @@ export function reportLovableError(error: unknown, context: Record<string, unkno
       : error instanceof Error
         ? error.message
         : String(error);
-  window.__lovableReportRuntimeError?.({
+  window.__ReportRuntimeError?.({
     message,
     stack: error instanceof Error ? error.stack : undefined,
     filename: window.location.pathname,

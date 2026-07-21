@@ -27,6 +27,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -70,17 +78,26 @@ const formatCompact = (n: number) =>
       : `R$ ${n.toFixed(0)}`;
 
 function ComprasPage() {
-  const { filialAtiva, selectedLoja, token, usuario } = useAuth();
-  // MODO DEBUG: força loja "32" para isolar problema de permissão/estado
-  const FORCE_LOJA = "32";
-  const [forcarLoja, setForcarLoja] = useState(true);
-  const loja = forcarLoja ? FORCE_LOJA : selectedLoja;
+  const { filialAtiva, selectedLoja, token, filiais, setFilialAtiva } = useAuth();
+  const loja = selectedLoja;
 
   const [busca, setBusca] = useState("");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
+  const [categoriaFiltro, setCategoriaFiltro] = useState<string>("__all__");
+  const [marcaFiltro, setMarcaFiltro] = useState<string>("__all__");
 
   const query = useQuery({
-    queryKey: ["compras-arelcmp", loja],
-    queryFn: () => obterComprasProtheus({ data: { loja, token: token ?? undefined } }),
+    queryKey: ["compras-arelcmp", loja, dataInicio, dataFim],
+    queryFn: () =>
+      obterComprasProtheus({
+        data: {
+          loja,
+          token: token ?? undefined,
+          dataInicio: dataInicio || undefined,
+          dataFim: dataFim || undefined,
+        },
+      }),
     // Só dispara /arelcmp quando temos uma loja válida
     enabled: Boolean(loja) && loja.trim().length > 0,
     placeholderData: keepPreviousData,
@@ -88,17 +105,31 @@ function ComprasPage() {
 
   const produtos = query.data ?? [];
 
+  const categorias = useMemo(
+    () =>
+      Array.from(new Set(produtos.map((p) => p.categoria).filter(Boolean))).sort(),
+    [produtos],
+  );
+  const marcas = useMemo(
+    () =>
+      Array.from(new Set(produtos.map((p) => p.marca_nome).filter(Boolean))).sort(),
+    [produtos],
+  );
+
   const filtrados = useMemo(() => {
-    if (!busca) return produtos;
-    const q = busca.toLowerCase();
-    return produtos.filter(
-      (p) =>
+    const q = busca.trim().toLowerCase();
+    return produtos.filter((p) => {
+      if (categoriaFiltro !== "__all__" && p.categoria !== categoriaFiltro) return false;
+      if (marcaFiltro !== "__all__" && p.marca_nome !== marcaFiltro) return false;
+      if (!q) return true;
+      return (
         p.codigo.toLowerCase().includes(q) ||
         p.descri.toLowerCase().includes(q) ||
         p.marca_nome.toLowerCase().includes(q) ||
-        p.categoria.toLowerCase().includes(q),
-    );
-  }, [produtos, busca]);
+        p.categoria.toLowerCase().includes(q)
+      );
+    });
+  }, [produtos, busca, categoriaFiltro, marcaFiltro]);
 
   // KPIs
   const kpis = useMemo(() => {
@@ -178,56 +209,6 @@ function ComprasPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Painel de Debug (temporário) */}
-      <Card className="border-dashed border-brand/40 bg-brand-soft/30">
-        <CardContent className="p-4 space-y-2 text-xs">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="font-semibold uppercase tracking-wide text-brand">
-              Modo Debug
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setForcarLoja(true);
-                query.refetch();
-              }}
-            >
-              Buscar Loja 32 (Teste TI)
-            </Button>
-          </div>
-          <div className="grid gap-1 sm:grid-cols-2 font-mono">
-            <div>
-              <span className="text-muted-foreground">Username Logado: </span>
-              <span className="font-medium">
-                {usuario?.id || usuario?.nome || "—"}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">selectedLoja (dropdown): </span>
-              <span className="font-medium">{JSON.stringify(selectedLoja)}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Loja enviada p/ /arelcmp: </span>
-              <span className="font-medium">{JSON.stringify(loja)}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Modo: </span>
-              <span className="font-medium">
-                {forcarLoja ? "HARDCODE 32" : "dropdown"}
-              </span>{" "}
-              <button
-                type="button"
-                className="underline text-brand ml-1"
-                onClick={() => setForcarLoja((v) => !v)}
-              >
-                alternar
-              </button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Relatório de Compras & Estoque</h1>
@@ -247,6 +228,101 @@ function ComprasPage() {
           Buscar
         </Button>
       </header>
+
+      {/* Filtros */}
+      <Card className="shadow-[var(--shadow-soft)]">
+        <CardContent className="p-4 sm:p-6">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Filial</Label>
+              <Select
+                value={selectedLoja || undefined}
+                onValueChange={(v) => {
+                  const f = filiais.find((x) => x.codigo === v);
+                  if (f) setFilialAtiva(f);
+                }}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Selecione a filial" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filiais.map((f) => (
+                    <SelectItem key={f.codigo} value={f.codigo}>
+                      {f.codigo} — {f.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Data inicial</Label>
+              <Input
+                type="date"
+                value={dataInicio}
+                onChange={(e) => setDataInicio(e.target.value)}
+                className="h-10"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Data final</Label>
+              <Input
+                type="date"
+                value={dataFim}
+                onChange={(e) => setDataFim(e.target.value)}
+                className="h-10"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Categoria</Label>
+              <Select value={categoriaFiltro} onValueChange={setCategoriaFiltro}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todas</SelectItem>
+                  {categorias.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Marca</Label>
+              <Select value={marcaFiltro} onValueChange={setMarcaFiltro}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todas</SelectItem>
+                  {marcas.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {(dataInicio || dataFim || categoriaFiltro !== "__all__" || marcaFiltro !== "__all__") && (
+            <div className="mt-3 flex justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDataInicio("");
+                  setDataFim("");
+                  setCategoriaFiltro("__all__");
+                  setMarcaFiltro("__all__");
+                }}
+              >
+                Limpar filtros
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {!loja && (
         <Card className="shadow-[var(--shadow-soft)]">

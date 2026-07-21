@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Search,
   ShoppingCart,
+  X,
 } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -175,11 +176,19 @@ function ComprasPage() {
     [produtos],
   );
 
-  const filtrados = useMemo(() => {
-    const q = busca.trim().toLowerCase();
+  // Cross-filter: aplica marca + categoria (filtros de BI) sobre os dados brutos.
+  // KPIs, gráficos e tabela consomem daqui para reagirem em conjunto.
+  const filteredDados = useMemo(() => {
     return produtos.filter((p) => {
       if (categoriaFiltro !== "__all__" && p.categoria !== categoriaFiltro) return false;
       if (marcaFiltro !== "__all__" && p.marca_nome !== marcaFiltro) return false;
+      return true;
+    });
+  }, [produtos, categoriaFiltro, marcaFiltro]);
+
+  const filtrados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    return filteredDados.filter((p) => {
       if (!q) return true;
       return (
         p.codigo.toLowerCase().includes(q) ||
@@ -188,11 +197,11 @@ function ComprasPage() {
         p.categoria.toLowerCase().includes(q)
       );
     });
-  }, [produtos, busca, categoriaFiltro, marcaFiltro]);
+  }, [filteredDados, busca]);
 
   // KPIs
   const kpis = useMemo(() => {
-    const acc = produtos.reduce(
+    const acc = filteredDados.reduce(
       (a, p) => {
         a.custoTotal += p.vlcust * p.qtestq;
         a.vendaTotal += p.vlvend * p.qtestq;
@@ -203,41 +212,61 @@ function ComprasPage() {
       { custoTotal: 0, vendaTotal: 0, qtdEstoque: 0, qtdVendida: 0 },
     );
     return acc;
-  }, [produtos]);
+  }, [filteredDados]);
 
-  // Estoque por categoria
+  // Estoque por categoria — quando há filtro de categoria, mantemos todas para
+  // permitir o toggle no gráfico; a fatia selecionada destaca-se por opacidade.
   const porCategoria = useMemo(() => {
     const map = new Map<string, number>();
-    produtos.forEach((p) => {
+    const base = marcaFiltro !== "__all__"
+      ? produtos.filter((p) => p.marca_nome === marcaFiltro)
+      : produtos;
+    base.forEach((p) => {
       const key = p.categoria || "Sem categoria";
       map.set(key, (map.get(key) ?? 0) + p.vlcust * p.qtestq);
     });
     return Array.from(map, ([categoria, valor]) => ({ categoria, valor }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 8);
-  }, [produtos]);
+  }, [produtos, marcaFiltro]);
 
-  // Top marcas por valor de estoque
+  // Top marcas — mesmo raciocínio: cruzamos com o filtro de categoria oposto.
   const topMarcas = useMemo(() => {
     const map = new Map<string, number>();
-    produtos.forEach((p) => {
+    const base = categoriaFiltro !== "__all__"
+      ? produtos.filter((p) => p.categoria === categoriaFiltro)
+      : produtos;
+    base.forEach((p) => {
       const key = p.marca_nome || "Sem marca";
       map.set(key, (map.get(key) ?? 0) + p.vlcust * p.qtestq);
     });
     return Array.from(map, ([marca, valor]) => ({ marca, valor }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 8);
-  }, [produtos]);
+  }, [produtos, categoriaFiltro]);
 
   // Alertas de reposição — estoque baixo
   const rupturas = useMemo(
     () =>
-      [...produtos]
+      [...filteredDados]
         .filter((p) => p.qtestq > 0 && p.qtestq <= 5)
         .sort((a, b) => a.qtestq - b.qtestq)
         .slice(0, 6),
-    [produtos],
+    [filteredDados],
   );
+
+  const toggleMarca = (marca: string) => {
+    setMarcaFiltro((prev) => (prev === marca ? "__all__" : marca));
+  };
+  const toggleCategoria = (categoria: string) => {
+    setCategoriaFiltro((prev) => (prev === categoria ? "__all__" : categoria));
+  };
+  const limparTodosFiltros = () => {
+    setDataInicio("");
+    setDataFim("");
+    setCategoriaFiltro("__all__");
+    setMarcaFiltro("__all__");
+  };
 
   const kpiCards = [
     {

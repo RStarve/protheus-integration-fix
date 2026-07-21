@@ -535,7 +535,7 @@ function ComprasPage() {
         <Card className="lg:col-span-2 shadow-[var(--shadow-soft)]">
           <CardContent className="p-4 sm:p-6">
             <h2 className="text-base font-semibold tracking-tight mb-4">
-              Top marcas por valor em estoque
+              Vendas por Marca
             </h2>
             <div className="h-72">
               {isLoading && topMarcas.length === 0 ? (

@@ -452,6 +452,52 @@ function ComprasPage() {
       )}
 
       {/* KPIs */}
+      {filtrosAtivos > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Filtros ativos:</span>
+          {categoriaFiltro !== "__all__" && (
+            <Badge variant="secondary" className="gap-1">
+              Categoria: {categoriaFiltro}
+              <button
+                type="button"
+                onClick={() => setCategoriaFiltro("__all__")}
+                className="ml-1 hover:opacity-70"
+                aria-label="Remover filtro de categoria"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {marcaFiltro !== "__all__" && (
+            <Badge variant="secondary" className="gap-1">
+              Marca: {marcaFiltro}
+              <button
+                type="button"
+                onClick={() => setMarcaFiltro("__all__")}
+                className="ml-1 hover:opacity-70"
+                aria-label="Remover filtro de marca"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          )}
+          {(dataInicio || dataFim) && (
+            <Badge variant="secondary">
+              Período: {dataInicio || "…"} → {dataFim || "…"}
+            </Badge>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={limparTodosFiltros}
+            className="h-7 gap-1 text-xs"
+          >
+            <X className="h-3 w-3" />
+            Limpar filtros
+          </Button>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpiCards.map((c) => (
           <Card key={c.label} className="shadow-[var(--shadow-soft)]">

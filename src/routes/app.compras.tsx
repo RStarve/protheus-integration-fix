@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Boxes,
   DollarSign,
+  Filter,
   Package,
   RefreshCw,
   Search,
@@ -28,6 +29,15 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -79,13 +89,62 @@ const formatCompact = (n: number) =>
 
 function ComprasPage() {
   const { filialAtiva, selectedLoja, token, filiais, setFilialAtiva } = useAuth();
-  const loja = selectedLoja;
+
+  // Fallback local: mesmo que /obterlojas falhe, o relatório continua funcionando.
+  const [lojaFiltro, setLojaFiltro] = useState<string>(selectedLoja || "32");
+  useEffect(() => {
+    if (selectedLoja && selectedLoja !== lojaFiltro) setLojaFiltro(selectedLoja);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLoja]);
+  const loja = lojaFiltro.trim();
 
   const [busca, setBusca] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>("__all__");
   const [marcaFiltro, setMarcaFiltro] = useState<string>("__all__");
+
+  // Estado do modal de filtros (rascunho aplicado ao confirmar)
+  const [filtrosOpen, setFiltrosOpen] = useState(false);
+  const [draftLoja, setDraftLoja] = useState(loja);
+  const [draftDataInicio, setDraftDataInicio] = useState(dataInicio);
+  const [draftDataFim, setDraftDataFim] = useState(dataFim);
+  const [draftCategoria, setDraftCategoria] = useState(categoriaFiltro);
+  const [draftMarca, setDraftMarca] = useState(marcaFiltro);
+
+  const abrirFiltros = () => {
+    setDraftLoja(loja);
+    setDraftDataInicio(dataInicio);
+    setDraftDataFim(dataFim);
+    setDraftCategoria(categoriaFiltro);
+    setDraftMarca(marcaFiltro);
+    setFiltrosOpen(true);
+  };
+
+  const aplicarFiltros = () => {
+    const novaLoja = draftLoja.trim();
+    setLojaFiltro(novaLoja);
+    const f = filiais.find((x) => x.codigo === novaLoja);
+    if (f && f.codigo !== filialAtiva?.codigo) setFilialAtiva(f);
+    setDataInicio(draftDataInicio);
+    setDataFim(draftDataFim);
+    setCategoriaFiltro(draftCategoria);
+    setMarcaFiltro(draftMarca);
+    setFiltrosOpen(false);
+  };
+
+  const limparFiltros = () => {
+    setDraftDataInicio("");
+    setDraftDataFim("");
+    setDraftCategoria("__all__");
+    setDraftMarca("__all__");
+  };
+
+  const filtrosAtivos =
+    (dataInicio ? 1 : 0) +
+    (dataFim ? 1 : 0) +
+    (categoriaFiltro !== "__all__" ? 1 : 0) +
+    (marcaFiltro !== "__all__" ? 1 : 0);
 
   const query = useQuery({
     queryKey: ["compras-arelcmp", loja, dataInicio, dataFim],
@@ -219,110 +278,129 @@ function ComprasPage() {
             </span>
           </p>
         </div>
-        <Button
-          onClick={() => query.refetch()}
-          disabled={!loja || query.isFetching}
-          className="gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${query.isFetching ? "animate-spin" : ""}`} />
-          Buscar
-        </Button>
-      </header>
-
-      {/* Filtros */}
-      <Card className="shadow-[var(--shadow-soft)]">
-        <CardContent className="p-4 sm:p-6">
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Filial</Label>
-              <Select
-                value={selectedLoja || undefined}
-                onValueChange={(v) => {
-                  const f = filiais.find((x) => x.codigo === v);
-                  if (f) setFilialAtiva(f);
-                }}
-              >
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Selecione a filial" />
-                </SelectTrigger>
-                <SelectContent>
-                  {filiais.map((f) => (
-                    <SelectItem key={f.codigo} value={f.codigo}>
-                      {f.codigo} — {f.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Data inicial</Label>
-              <Input
-                type="date"
-                value={dataInicio}
-                onChange={(e) => setDataInicio(e.target.value)}
-                className="h-10"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Data final</Label>
-              <Input
-                type="date"
-                value={dataFim}
-                onChange={(e) => setDataFim(e.target.value)}
-                className="h-10"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Categoria</Label>
-              <Select value={categoriaFiltro} onValueChange={setCategoriaFiltro}>
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Todas</SelectItem>
-                  {categorias.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Marca</Label>
-              <Select value={marcaFiltro} onValueChange={setMarcaFiltro}>
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all__">Todas</SelectItem>
-                  {marcas.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          {(dataInicio || dataFim || categoriaFiltro !== "__all__" || marcaFiltro !== "__all__") && (
-            <div className="mt-3 flex justify-end">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setDataInicio("");
-                  setDataFim("");
-                  setCategoriaFiltro("__all__");
-                  setMarcaFiltro("__all__");
-                }}
-              >
-                Limpar filtros
+        <div className="flex items-center gap-2">
+          <Dialog open={filtrosOpen} onOpenChange={(o) => (o ? abrirFiltros() : setFiltrosOpen(false))}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2" onClick={abrirFiltros}>
+                <Filter className="h-4 w-4" />
+                Filtros
+                {filtrosAtivos > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 px-1.5 tabular-nums">
+                    {filtrosAtivos}
+                  </Badge>
+                )}
               </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Filtros do relatório</DialogTitle>
+                <DialogDescription>
+                  Selecione filial, período, categoria e marca. Os filtros só são aplicados ao confirmar.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Filial</Label>
+                  {filiais.length > 0 ? (
+                    <Select value={draftLoja || undefined} onValueChange={setDraftLoja}>
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="Selecione a filial" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filiais.map((f) => (
+                          <SelectItem key={f.codigo} value={f.codigo}>
+                            {f.codigo} — {f.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={draftLoja}
+                      onChange={(e) => setDraftLoja(e.target.value)}
+                      placeholder="Ex.: 32"
+                      className="h-10"
+                    />
+                  )}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Data inicial</Label>
+                    <Input
+                      type="date"
+                      value={draftDataInicio}
+                      onChange={(e) => setDraftDataInicio(e.target.value)}
+                      className="h-10"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Data final</Label>
+                    <Input
+                      type="date"
+                      value={draftDataFim}
+                      onChange={(e) => setDraftDataFim(e.target.value)}
+                      className="h-10"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Categoria</Label>
+                    <Select value={draftCategoria} onValueChange={setDraftCategoria}>
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todas</SelectItem>
+                        {categorias.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Marca</Label>
+                    <Select value={draftMarca} onValueChange={setDraftMarca}>
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">Todas</SelectItem>
+                        {marcas.map((m) => (
+                          <SelectItem key={m} value={m}>
+                            {m}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button variant="ghost" onClick={limparFiltros}>
+                  Limpar
+                </Button>
+                <Button variant="outline" onClick={() => setFiltrosOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={aplicarFiltros} disabled={!draftLoja.trim()}>
+                  Aplicar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Button
+            onClick={() => query.refetch()}
+            disabled={!loja || query.isFetching}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${query.isFetching ? "animate-spin" : ""}`} />
+            Buscar
+          </Button>
+        </div>
+      </header>
 
       {!loja && (
         <Card className="shadow-[var(--shadow-soft)]">

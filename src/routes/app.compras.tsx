@@ -70,15 +70,16 @@ const formatCompact = (n: number) =>
       : `R$ ${n.toFixed(0)}`;
 
 function ComprasPage() {
-  const { filialAtiva, token } = useAuth();
-  const loja = filialAtiva?.codigo ?? "";
+  const { filialAtiva, selectedLoja, token } = useAuth();
+  const loja = selectedLoja;
 
   const [busca, setBusca] = useState("");
 
   const query = useQuery({
     queryKey: ["compras-arelcmp", loja],
     queryFn: () => obterComprasProtheus({ data: { loja, token: token ?? undefined } }),
-    enabled: !!loja,
+    // Só dispara /arelcmp quando temos uma loja válida
+    enabled: Boolean(loja) && loja.trim().length > 0,
     placeholderData: keepPreviousData,
   });
 

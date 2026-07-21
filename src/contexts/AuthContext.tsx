@@ -63,10 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setFiliaisError(null);
     const rawUsername =
       usuario.id ||
-      usuario.nome ||
       (typeof window !== "undefined" ? localStorage.getItem("username") ?? "" : "");
     const username = (rawUsername ?? "").trim();
-    console.log("Usuário enviado para a API:", username);
+    console.log("Usuário (login ID) enviado para a API:", username);
     if (!username) {
       const msg = "Usuário não encontrado. Faça login novamente.";
       toast.error(msg);
@@ -140,8 +139,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPendingFilialCodigo(undefined);
     persist({ token, usuario, filialAtivaCodigo: undefined });
     if (typeof window !== "undefined") {
-      const uname = usuario.id || usuario.nome;
-      if (uname) localStorage.setItem("username", uname);
+      // Sempre grava o LOGIN (id), nunca o nome de exibição.
+      if (usuario.id) localStorage.setItem("username", usuario.id);
     }
   };
 

@@ -760,46 +760,52 @@ function ComprasPage() {
               </TableHeader>
               <TableBody>
                 {isLoading && produtos.length === 0 ? (
-                  <TableSkeleton rows={8} cols={8} />
+                  <TableSkeleton rows={8} cols={9} />
                 ) : filtrados.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
                       {loja ? "Nenhum produto encontrado." : "Selecione uma loja."}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtrados.slice(0, 200).map((p) => (
-                    <TableRow key={`${p.codigo}-${p.descri}`}>
-                      <TableCell className="tabular-nums text-muted-foreground">
-                        {p.codigo}
-                      </TableCell>
-                      <TableCell className="font-medium max-w-[280px] truncate">
-                        {p.descri}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{p.marca_nome}</TableCell>
-                      <TableCell className="text-muted-foreground">{p.categoria}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        <span
-                          className={
-                            p.qtestq > 0 && p.qtestq <= 5
-                              ? "inline-block px-2 py-0.5 rounded bg-brand-soft text-brand font-medium"
-                              : ""
-                          }
-                        >
-                          {p.qtestq}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">
-                        {p.qtvend}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatBRL(p.vlvend)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatBRL(p.vlcust)}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  filtrados.slice(0, 200).map((p) => {
+                    const markupLinha = p.vlcust > 0 ? ((p.vlvend - p.vlcust) / p.vlcust) * 100 : 0;
+                    return (
+                      <TableRow key={`${p.codigo}-${p.descri}`}>
+                        <TableCell className="tabular-nums text-muted-foreground">
+                          {p.codigo}
+                        </TableCell>
+                        <TableCell className="font-medium max-w-[280px] truncate">
+                          {p.descri}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{p.marca_nome}</TableCell>
+                        <TableCell className="text-muted-foreground">{p.categoria}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          <span
+                            className={
+                              p.qtestq > 0 && p.qtestq <= 5
+                                ? "inline-block px-2 py-0.5 rounded bg-brand-soft text-brand font-medium"
+                                : ""
+                            }
+                          >
+                            {p.qtestq}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                          {p.qtvend}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatBRL(p.vlcust)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatBRL(p.vlvend)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {markupLinha.toFixed(2).replace(".", ",")}%
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

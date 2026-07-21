@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import type { Filial, Usuario } from "@/services/api";
 import { obterLojasProtheus } from "@/lib/protheus-lojas.functions";
 
@@ -60,19 +61,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setFiliaisLoading(true);
     setFiliaisError(null);
-    const username =
+    const rawUsername =
       usuario.id ||
       usuario.nome ||
       (typeof window !== "undefined" ? localStorage.getItem("username") ?? "" : "");
+    const username = (rawUsername ?? "").trim();
+    console.log("Usuário enviado para a API:", username);
     if (!username) {
-      setFiliaisError("Usuário não identificado. Faça login novamente.");
+      const msg = "Usuário não encontrado. Faça login novamente.";
+      toast.error(msg);
+      setFiliaisError(msg);
       setFiliaisLoading(false);
       return;
     }
     obterLojasProtheus({ data: { user: username, token: token ?? undefined } })
       .then((lojas) => {
         if (cancelled) return;
+        console.log("Resposta bruta de Lojas:", lojas);
         setFiliais(lojas);
+        if (!lojas || lojas.length === 0) {
+          const msg =
+            "Nenhuma filial retornada pela API para este usuário. Verifique as permissões no Protheus.";
+          toast.error(msg);
+          setFiliaisError(msg);
+          setFilialAtivaState(null);
+          return;
+        }
         // Auto-seleciona: mantém a persistida (por código) OU a primeira loja do array
         const escolhida =
           lojas.find((l) => l.codigo === pendingFilialCodigo) ?? lojas[0] ?? null;
@@ -81,7 +95,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setFiliaisError(err instanceof Error ? err.message : "Erro ao carregar lojas.");
+        console.error("Erro ao carregar filiais (/obterlojas):", err);
+        const raw = err instanceof Error ? err.message : String(err);
+        const isNet =
+          /network|failed to fetch|cors|load failed|net::/i.test(raw) ||
+          raw.toLowerCase().includes("conectar");
+        const msg = isNet
+          ? "Erro ao carregar as filiais. Verifique a conexão com a API."
+          : `Erro ao carregar as filiais: ${raw}`;
+        toast.error(msg);
+        setFiliaisError(msg);
         setFiliais([]);
         setFilialAtivaState(null);
       })

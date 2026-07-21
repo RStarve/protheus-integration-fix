@@ -569,7 +569,26 @@ function ComprasPage() {
                       }}
                       formatter={(v: number) => formatBRL(v)}
                     />
-                    <Bar dataKey="valor" fill={CHART_TEAL} radius={[0, 4, 4, 0]} />
+                    <Bar
+                      dataKey="valor"
+                      radius={[0, 4, 4, 0]}
+                      cursor="pointer"
+                      onClick={(d: { marca?: string }) => {
+                        if (d?.marca) toggleMarca(d.marca);
+                      }}
+                    >
+                      {topMarcas.map((m) => {
+                        const dim =
+                          marcaFiltro !== "__all__" && marcaFiltro !== m.marca;
+                        return (
+                          <Cell
+                            key={m.marca}
+                            fill={CHART_TEAL}
+                            fillOpacity={dim ? 0.25 : 1}
+                          />
+                        );
+                      })}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -599,10 +618,23 @@ function ComprasPage() {
                       paddingAngle={2}
                       stroke="hsl(0 0% 100%)"
                       strokeWidth={2}
+                      cursor="pointer"
+                      onClick={(d: { categoria?: string }) => {
+                        if (d?.categoria) toggleCategoria(d.categoria);
+                      }}
                     >
-                      {porCategoria.map((_, i) => (
-                        <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                      ))}
+                      {porCategoria.map((c, i) => {
+                        const dim =
+                          categoriaFiltro !== "__all__" &&
+                          categoriaFiltro !== c.categoria;
+                        return (
+                          <Cell
+                            key={c.categoria}
+                            fill={CHART_COLORS[i % CHART_COLORS.length]}
+                            fillOpacity={dim ? 0.25 : 1}
+                          />
+                        );
+                      })}
                     </Pie>
                     <Tooltip
                       contentStyle={{

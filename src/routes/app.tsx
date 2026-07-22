@@ -4,6 +4,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { AppSidebar } from "@/components/app-sidebar";
 import { UserMenu } from "@/components/user-menu";
 import { Separator } from "@/components/ui/separator";
+import { BranchSelector } from "@/components/branch-selector";
 import { useAuth } from "@/contexts/AuthContext";
 
 export const Route = createFileRoute("/app")({
@@ -29,6 +30,7 @@ function AppLayout() {
             <SidebarTrigger className="text-foreground" />
             <Separator orientation="vertical" className="h-6" />
             <div className="flex-1" />
+            <BranchSelector />
             <UserMenu />
           </header>
           <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-x-hidden">

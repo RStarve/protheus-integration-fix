@@ -11,14 +11,13 @@ export interface ProdutoCompra {
   qtvend: number;
   vlvend: number;
   vlcust: number;
+  data_movimento?: string;
 }
 
 export interface ObterComprasInput {
   loja: string;
   user?: string;
   token?: string;
-  dataInicio?: string;
-  dataFim?: string;
 }
 
 const toNumber = (v: unknown): number => {
@@ -42,8 +41,6 @@ export const obterComprasProtheus = createServerFn({ method: "POST" })
       loja: data.loja.trim(),
       user: data.user?.trim() || undefined,
       token: data.token,
-      dataInicio: data.dataInicio?.trim() || undefined,
-      dataFim: data.dataFim?.trim() || undefined,
     };
   })
   .handler(async ({ data }): Promise<ProdutoCompra[]> => {
@@ -56,26 +53,10 @@ export const obterComprasProtheus = createServerFn({ method: "POST" })
         Accept: "application/json",
       };
       if (data.token) headers.Authorization = `Bearer ${data.token}`;
-      // YYYY-MM-DD -> YYYYMMDD (padrão Protheus). Enviamos as duas variações
-      // de nome para compatibilidade com o backend.
-      const toProtheusDate = (v?: string) =>
-        v ? v.replace(/-/g, "").slice(0, 8) : undefined;
-      const di = toProtheusDate(data.dataInicio);
-      const df = toProtheusDate(data.dataFim);
       const body: Record<string, string> = { loja: data.loja };
       if (data.user) {
         body.user = data.user;
         body.usuario = data.user;
-      }
-      if (di) {
-        body.dataInicio = di;
-        body.data_inicio = di;
-        body["data-ini"] = di;
-      }
-      if (df) {
-        body.dataFim = df;
-        body.data_fim = df;
-        body["data-fim"] = df;
       }
       response = await fetch(url, {
         method: "POST",
@@ -125,6 +106,17 @@ export const obterComprasProtheus = createServerFn({ method: "POST" })
 
     return lista.map((item) => {
       const o = (item ?? {}) as Record<string, unknown>;
+      const dataMov = toStr(
+        o.data_movimento ??
+          o.DATA_MOVIMENTO ??
+          o.dataMovimento ??
+          o.data ??
+          o.emissao ??
+          o.EMISSAO ??
+          o.dtemissao ??
+          o.dt_emissao ??
+          "",
+      );
       return {
         codigo: toStr(o.codigo),
         descri: toStr(o.descri),
@@ -134,6 +126,7 @@ export const obterComprasProtheus = createServerFn({ method: "POST" })
         qtvend: toNumber(o.qtvend),
         vlvend: toNumber(o.vlvend),
         vlcust: toNumber(o.vlcust),
+        data_movimento: dataMov || undefined,
       } satisfies ProdutoCompra;
     });
   });

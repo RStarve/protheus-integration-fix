@@ -285,13 +285,19 @@ function ComprasPage() {
     });
   }, [filteredDados, busca]);
 
-  // KPIs — relatório de vendas/margem: os valores financeiros já são totais da linha
+  // KPIs — relatório de vendas/margem: os valores financeiros já são totais da linha.
+  // Estoque é sempre somado das linhas retornadas pela API, sem filtro local de data.
+  const totalEstoque = useMemo(
+    () => filteredDados.reduce((acc, item) => acc + Number(item.qtestq || 0), 0),
+    [filteredDados],
+  );
+
   const kpis = useMemo(() => {
     const acc = filteredDados.reduce(
       (a, p) => {
         a.custoTotal += getCustoPeriodo(p);
         a.vendaTotal += getValorPeriodo(p);
-        a.qtdEstoque += Number(p.qtestq) || 0;
+        a.qtdEstoque += Number(p.qtestq || 0);
         a.qtdVendida += Number(p.qtvend) || 0;
         return a;
       },
@@ -302,7 +308,7 @@ function ComprasPage() {
     // eslint-disable-next-line no-console
     console.log("Primeira linha da API:", filteredDados[0]);
     return acc;
-  }, [filteredDados]);
+  }, [filteredDados, totalEstoque]);
 
   // Vendas por categoria — usa o mesmo dataset filtrado das KPIs/tabela
   // para que todos os cartões e gráficos reflitam exatamente os mesmos filtros.

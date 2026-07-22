@@ -438,30 +438,6 @@ function ComprasPage() {
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-2">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Filial</Label>
-                  {filiais.length > 0 ? (
-                    <Select value={draftLoja || undefined} onValueChange={setDraftLoja}>
-                      <SelectTrigger className="h-10">
-                        <SelectValue placeholder="Selecione a filial" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filiais.map((f) => (
-                          <SelectItem key={f.codigo} value={f.codigo}>
-                            {f.codigo} — {f.nome}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      value={draftLoja}
-                      onChange={(e) => setDraftLoja(e.target.value)}
-                      placeholder="Ex.: 32"
-                      className="h-10"
-                    />
-                  )}
-                </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label className="text-xs">Data inicial</Label>
@@ -524,7 +500,7 @@ function ComprasPage() {
                 <Button variant="outline" onClick={() => setFiltrosOpen(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={aplicarFiltros} disabled={!draftLoja.trim()}>
+                <Button onClick={aplicarFiltros}>
                   Aplicar
                 </Button>
               </DialogFooter>
@@ -542,12 +518,13 @@ function ComprasPage() {
       </header>
 
       {/* Debug temporário — primeira linha bruta da API */}
-      {filteredDados[0] && (
+      {dadosFiltrados[0] && (
         <div className="text-xs text-muted-foreground font-mono border border-dashed rounded-md px-3 py-2">
           <span className="font-semibold text-foreground">Debug API -&gt;</span>{" "}
-          Qtd Venda: {String(filteredDados[0]?.qtvend)} | Venda:{" "}
-          {String(filteredDados[0]?.vlvend)} | Estoque (qtestq):{" "}
-          {String(filteredDados[0]?.qtestq)}
+          Qtd Venda: {String(dadosFiltrados[0]?.qtvend)} | Venda:{" "}
+          {String(dadosFiltrados[0]?.vlvend)} | Estoque (qtestq):{" "}
+          {String(dadosFiltrados[0]?.qtestq)} | Data:{" "}
+          {String(dadosFiltrados[0]?.data_movimento ?? "—")}
         </div>
       )}
 

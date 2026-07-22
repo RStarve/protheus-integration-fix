@@ -521,6 +521,17 @@ function ComprasPage() {
         </div>
       </header>
 
+      {/* Debug temporário — primeira linha bruta da API */}
+      {filteredDados[0] && (
+        <div className="text-xs text-muted-foreground font-mono border border-dashed rounded-md px-3 py-2">
+          <span className="font-semibold text-foreground">Debug:</span>{" "}
+          Qtd Venda: {String(filteredDados[0]?.qtvend)} | Custo:{" "}
+          {String(filteredDados[0]?.vlcust)} | Venda:{" "}
+          {String(filteredDados[0]?.vlvend)} | Estoque:{" "}
+          {String(filteredDados[0]?.qtestq)}
+        </div>
+      )}
+
       {!loja && (
         <Card className="shadow-[var(--shadow-soft)]">
           <CardContent className="p-6 text-sm text-muted-foreground">

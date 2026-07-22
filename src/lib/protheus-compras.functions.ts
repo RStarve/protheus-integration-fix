@@ -70,10 +70,12 @@ export const obterComprasProtheus = createServerFn({ method: "POST" })
       if (di) {
         body.dataInicio = di;
         body.data_inicio = di;
+        body["data-ini"] = di;
       }
       if (df) {
         body.dataFim = df;
         body.data_fim = df;
+        body["data-fim"] = df;
       }
       response = await fetch(url, {
         method: "POST",

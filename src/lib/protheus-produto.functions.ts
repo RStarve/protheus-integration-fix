@@ -9,7 +9,6 @@ export interface ObterProdutoDetalheInput {
 }
 
 export interface ProdutoDetalhe {
-  raw: unknown;
   campos: Array<{ chave: string; valor: string }>;
 }
 
@@ -102,5 +101,5 @@ export const obterProdutoDetalheProtheus = createServerFn({ method: "POST" })
       valor: toDisplay(valor),
     }));
 
-    return { raw: dadosRaw, campos };
+    return { campos };
   });

@@ -57,7 +57,10 @@ import {
 import { TableSkeleton } from "@/components/table-skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { obterComprasProtheus } from "@/lib/protheus-compras.functions";
+import { obterProdutoDetalheProtheus } from "@/lib/protheus-produto.functions";
 import { formatBRL } from "@/lib/format";
+import { toast } from "sonner";
+import { Eye } from "lucide-react";
 
 export const Route = createFileRoute("/app/compras")({
   head: () => ({

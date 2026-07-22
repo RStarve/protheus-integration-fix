@@ -153,6 +153,41 @@ function ComprasPage() {
   const [draftCategoria, setDraftCategoria] = useState(categoriaFiltro);
   const [draftMarca, setDraftMarca] = useState(marcaFiltro);
 
+  // Modal de detalhes do produto
+  const [detalheOpen, setDetalheOpen] = useState(false);
+  const [detalheCodigo, setDetalheCodigo] = useState<string | null>(null);
+  const [detalheDescri, setDetalheDescri] = useState<string>("");
+
+  const detalheQuery = useQuery({
+    queryKey: ["produto-detalhe", loja, detalheCodigo],
+    queryFn: () =>
+      obterProdutoDetalheProtheus({
+        data: {
+          loja,
+          codigo: detalheCodigo!,
+          token: token ?? undefined,
+        },
+      }),
+    enabled: detalheOpen && Boolean(detalheCodigo) && Boolean(loja),
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (detalheQuery.error) {
+      const msg =
+        detalheQuery.error instanceof Error
+          ? detalheQuery.error.message
+          : "Erro ao carregar detalhes do produto.";
+      toast.error(msg);
+    }
+  }, [detalheQuery.error]);
+
+  const abrirDetalhe = (codigo: string, descri: string) => {
+    setDetalheCodigo(codigo);
+    setDetalheDescri(descri);
+    setDetalheOpen(true);
+  };
+
   const abrirFiltros = () => {
     setDraftLoja(loja);
     setDraftDataInicio(dataInicio);

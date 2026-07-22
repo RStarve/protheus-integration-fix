@@ -113,7 +113,7 @@ const getCustoPeriodo = (p: { vlcust: unknown }) => Number(p.vlcust) || 0;
 const getValorPeriodo = (p: { vlvend: unknown }) => Number(p.vlvend) || 0;
 
 function ComprasPage() {
-  const { filialAtiva, selectedLoja, token, filiais, setFilialAtiva, usuario } = useAuth();
+  const { filialAtiva, selectedLoja, token, usuario } = useAuth();
   // Login ID do Protheus (nunca o nome de exibição). Fallback estático mantém
   // o comportamento do último teste estável quando a sessão não trouxer o ID.
   const userLogin =
@@ -123,13 +123,9 @@ function ComprasPage() {
         : "") ||
       "maique.meireles");
 
-  // Fallback local: mesmo que /obterlojas falhe, o relatório continua funcionando.
-  const [lojaFiltro, setLojaFiltro] = useState<string>(selectedLoja || "32");
-  useEffect(() => {
-    if (selectedLoja && selectedLoja !== lojaFiltro) setLojaFiltro(selectedLoja);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLoja]);
-  const loja = lojaFiltro.trim();
+  // Filial vem do seletor global no header. Fallback "32" para funcionar
+  // mesmo se /obterlojas falhar durante o teste.
+  const loja = (selectedLoja || "32").trim();
 
   const [busca, setBusca] = useState("");
   const { inicio: defaultInicio, fim: defaultFim } = useMemo(() => {
@@ -146,7 +142,6 @@ function ComprasPage() {
 
   // Estado do modal de filtros (rascunho aplicado ao confirmar)
   const [filtrosOpen, setFiltrosOpen] = useState(false);
-  const [draftLoja, setDraftLoja] = useState(loja);
   const [draftDataInicio, setDraftDataInicio] = useState(dataInicio);
   const [draftDataFim, setDraftDataFim] = useState(dataFim);
   const [draftCategoria, setDraftCategoria] = useState(categoriaFiltro);
@@ -188,7 +183,6 @@ function ComprasPage() {
   };
 
   const abrirFiltros = () => {
-    setDraftLoja(loja);
     setDraftDataInicio(dataInicio);
     setDraftDataFim(dataFim);
     setDraftCategoria(categoriaFiltro);
@@ -197,10 +191,6 @@ function ComprasPage() {
   };
 
   const aplicarFiltros = () => {
-    const novaLoja = draftLoja.trim();
-    setLojaFiltro(novaLoja);
-    const f = filiais.find((x) => x.codigo === novaLoja);
-    if (f && f.codigo !== filialAtiva?.codigo) setFilialAtiva(f);
     setDataInicio(draftDataInicio);
     setDataFim(draftDataFim);
     setCategoriaFiltro(draftCategoria);
@@ -222,28 +212,21 @@ function ComprasPage() {
     (marcaFiltro !== "__all__" ? 1 : 0);
 
   const query = useQuery({
-    queryKey: ["compras-arelcmp", loja, userLogin, dataInicio, dataFim],
+    // Requisição GLOBAL: só a filial (e o usuário) dispara nova busca.
+    // Data é filtro LOCAL/in-memory e não entra na queryKey.
+    queryKey: ["compras-arelcmp", loja, userLogin],
     queryFn: () =>
       obterComprasProtheus({
         data: {
           loja,
           user: userLogin,
           token: token ?? undefined,
-          dataInicio: dataInicio || undefined,
-          dataFim: dataFim || undefined,
         },
       }),
     // Só dispara /arelcmp quando temos uma loja válida
     enabled: Boolean(loja) && loja.trim().length > 0,
     placeholderData: keepPreviousData,
   });
-
-  useEffect(() => {
-    if (!loja) return;
-    query.refetch();
-    // Garante atualização imediata quando o período aplicado muda.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataInicio, dataFim]);
 
   const rawErr =
     query.error instanceof Error ? query.error.message : query.error ? String(query.error) : "";
@@ -263,8 +246,8 @@ function ComprasPage() {
   );
 
   // Cross-filter: aplica marca + categoria (filtros de BI) sobre os dados brutos.
-  // KPIs, gráficos e tabela consomem daqui para reagirem em conjunto.
-  const filteredDados = useMemo(() => {
+  // dadosBase = produtos + Marca/Categoria (SEM data). Usado para Estoque.
+  const dadosBase = useMemo(() => {
     return produtos.filter((p) => {
       if (categoriaFiltro !== "__all__" && p.categoria !== categoriaFiltro) return false;
       if (marcaFiltro !== "__all__" && p.marca_nome !== marcaFiltro) return false;
@@ -272,9 +255,45 @@ function ComprasPage() {
     });
   }, [produtos, categoriaFiltro, marcaFiltro]);
 
+  // Parse tolerante: aceita YYYY-MM-DD, YYYYMMDD, ISO. Retorna timestamp
+  // no início do dia (local) ou NaN se não conseguir.
+  const parseDia = (v?: string): number => {
+    if (!v) return NaN;
+    const s = v.trim();
+    if (!s) return NaN;
+    let y: number, m: number, d: number;
+    const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+    const compact = /^(\d{4})(\d{2})(\d{2})$/.exec(s);
+    if (iso) {
+      y = +iso[1]; m = +iso[2]; d = +iso[3];
+    } else if (compact) {
+      y = +compact[1]; m = +compact[2]; d = +compact[3];
+    } else {
+      const t = new Date(s).setHours(0, 0, 0, 0);
+      return Number.isFinite(t) ? t : NaN;
+    }
+    return new Date(y, m - 1, d).setHours(0, 0, 0, 0);
+  };
+
+  // dadosFiltrados = dadosBase + filtro de Data (in-memory). Usado para
+  // KPIs de Vendas (Custo/Valor/Qtd/Markup) e gráficos.
+  const dadosFiltrados = useMemo(() => {
+    const ini = parseDia(dataInicio);
+    const fim = parseDia(dataFim);
+    if (!Number.isFinite(ini) && !Number.isFinite(fim)) return dadosBase;
+    return dadosBase.filter((p) => {
+      const t = parseDia(p.data_movimento);
+      // Sem data na linha: mantém (para não zerar tudo se API não expuser).
+      if (!Number.isFinite(t)) return true;
+      if (Number.isFinite(ini) && t < ini) return false;
+      if (Number.isFinite(fim) && t > fim) return false;
+      return true;
+    });
+  }, [dadosBase, dataInicio, dataFim]);
+
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    return filteredDados.filter((p) => {
+    return dadosFiltrados.filter((p) => {
       if (!q) return true;
       return (
         p.codigo.toLowerCase().includes(q) ||
@@ -283,66 +302,61 @@ function ComprasPage() {
         p.categoria.toLowerCase().includes(q)
       );
     });
-  }, [filteredDados, busca]);
+  }, [dadosFiltrados, busca]);
 
-  // KPIs — relatório de vendas/margem: os valores financeiros já são totais da linha.
-  // Estoque é sempre somado das linhas retornadas pela API, sem filtro local de data.
+  // Estoque: usa dadosBase (ignora filtro de Data).
   const totalEstoque = useMemo(
-    () => produtos.reduce((acc, item) => acc + Number(item.qtestq || 0), 0),
-    [produtos],
+    () => dadosBase.reduce((acc, item) => acc + Number(item.qtestq || 0), 0),
+    [dadosBase],
   );
 
   const kpis = useMemo(() => {
-    const acc = filteredDados.reduce(
+    const acc = dadosFiltrados.reduce(
       (a, p) => {
         a.custoTotal += getCustoPeriodo(p);
         a.vendaTotal += getValorPeriodo(p);
-        a.qtdEstoque += Number(p.qtestq || 0);
         a.qtdVendida += Number(p.qtvend) || 0;
         return a;
       },
-      { custoTotal: 0, vendaTotal: 0, qtdEstoque: 0, qtdVendida: 0, markup: 0 },
+      { custoTotal: 0, vendaTotal: 0, qtdVendida: 0, markup: 0 },
     );
     acc.markup = acc.custoTotal > 0 ? ((acc.vendaTotal - acc.custoTotal) / acc.custoTotal) * 100 : 0;
-    // Raio-X: primeira linha bruta da API para conferir formato dos campos.
-    // eslint-disable-next-line no-console
-    console.log("Primeira linha da API:", filteredDados[0]);
     return acc;
-  }, [filteredDados]);
+  }, [dadosFiltrados]);
 
   // Vendas por categoria — usa o mesmo dataset filtrado das KPIs/tabela
   // para que todos os cartões e gráficos reflitam exatamente os mesmos filtros.
   const porCategoria = useMemo(() => {
     const map = new Map<string, number>();
-    filteredDados.forEach((p) => {
+    dadosFiltrados.forEach((p) => {
       const key = p.categoria || "Sem categoria";
       map.set(key, (map.get(key) ?? 0) + getValorPeriodo(p));
     });
     return Array.from(map, ([categoria, valor]) => ({ categoria, valor }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 8);
-  }, [filteredDados]);
+  }, [dadosFiltrados]);
 
   // Vendas por marca — idem, alimentado pelo dataset já filtrado.
   const topMarcas = useMemo(() => {
     const map = new Map<string, number>();
-    filteredDados.forEach((p) => {
+    dadosFiltrados.forEach((p) => {
       const key = p.marca_nome || "Sem marca";
       map.set(key, (map.get(key) ?? 0) + getValorPeriodo(p));
     });
     return Array.from(map, ([marca, valor]) => ({ marca, valor }))
       .sort((a, b) => b.valor - a.valor)
       .slice(0, 8);
-  }, [filteredDados]);
+  }, [dadosFiltrados]);
 
   // Alertas de reposição — estoque baixo
   const rupturas = useMemo(
     () =>
-      [...filteredDados]
+      [...dadosBase]
         .filter((p) => p.qtestq > 0 && p.qtestq <= 5)
         .sort((a, b) => a.qtestq - b.qtestq)
         .slice(0, 6),
-    [filteredDados],
+    [dadosBase],
   );
 
   const toggleMarca = (marca: string) => {

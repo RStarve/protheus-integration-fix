@@ -57,7 +57,10 @@ import {
 import { TableSkeleton } from "@/components/table-skeleton";
 import { useAuth } from "@/contexts/AuthContext";
 import { obterComprasProtheus } from "@/lib/protheus-compras.functions";
+import { obterProdutoDetalheProtheus } from "@/lib/protheus-produto.functions";
 import { formatBRL } from "@/lib/format";
+import { toast } from "sonner";
+import { Eye } from "lucide-react";
 
 export const Route = createFileRoute("/app/compras")({
   head: () => ({
@@ -149,6 +152,41 @@ function ComprasPage() {
   const [draftDataFim, setDraftDataFim] = useState(dataFim);
   const [draftCategoria, setDraftCategoria] = useState(categoriaFiltro);
   const [draftMarca, setDraftMarca] = useState(marcaFiltro);
+
+  // Modal de detalhes do produto
+  const [detalheOpen, setDetalheOpen] = useState(false);
+  const [detalheCodigo, setDetalheCodigo] = useState<string | null>(null);
+  const [detalheDescri, setDetalheDescri] = useState<string>("");
+
+  const detalheQuery = useQuery({
+    queryKey: ["produto-detalhe", loja, detalheCodigo],
+    queryFn: () =>
+      obterProdutoDetalheProtheus({
+        data: {
+          loja,
+          codigo: detalheCodigo!,
+          token: token ?? undefined,
+        },
+      }),
+    enabled: detalheOpen && Boolean(detalheCodigo) && Boolean(loja),
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (detalheQuery.error) {
+      const msg =
+        detalheQuery.error instanceof Error
+          ? detalheQuery.error.message
+          : "Erro ao carregar detalhes do produto.";
+      toast.error(msg);
+    }
+  }, [detalheQuery.error]);
+
+  const abrirDetalhe = (codigo: string, descri: string) => {
+    setDetalheCodigo(codigo);
+    setDetalheDescri(descri);
+    setDetalheOpen(true);
+  };
 
   const abrirFiltros = () => {
     setDraftLoja(loja);
@@ -817,9 +855,16 @@ function ComprasPage() {
                     const valorLinha = getValorPeriodo(p);
                     const markupLinha = custoLinha > 0 ? ((valorLinha - custoLinha) / custoLinha) * 100 : 0;
                     return (
-                      <TableRow key={`${p.codigo}-${p.descri}`}>
+                      <TableRow
+                        key={`${p.codigo}-${p.descri}`}
+                        onClick={() => abrirDetalhe(p.codigo, p.descri)}
+                        className="cursor-pointer"
+                      >
                         <TableCell className="tabular-nums text-muted-foreground">
-                          {p.codigo}
+                          <span className="inline-flex items-center gap-2">
+                            <Eye className="h-3.5 w-3.5 text-brand" />
+                            {p.codigo}
+                          </span>
                         </TableCell>
                         <TableCell className="font-medium max-w-[280px] truncate">
                           {p.descri}
@@ -863,6 +908,56 @@ function ComprasPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={detalheOpen} onOpenChange={setDetalheOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalhes do produto</DialogTitle>
+            <DialogDescription>
+              {detalheCodigo ? `Código ${detalheCodigo}` : ""}
+              {detalheDescri ? ` • ${detalheDescri}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {detalheQuery.isLoading || detalheQuery.isFetching ? (
+              <div className="space-y-2 py-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
+                ))}
+              </div>
+            ) : detalheQuery.error ? (
+              <div className="p-4 text-sm text-muted-foreground">
+                Não foi possível carregar os detalhes.
+              </div>
+            ) : detalheQuery.data && detalheQuery.data.campos.length > 0 ? (
+              <div className="grid gap-2 sm:grid-cols-2 py-2">
+                {detalheQuery.data.campos.map((c) => (
+                  <div
+                    key={c.chave}
+                    className="rounded-md border border-border px-3 py-2"
+                  >
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {c.chave}
+                    </div>
+                    <div className="text-sm font-medium break-words">
+                      {c.valor || "—"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-sm text-muted-foreground">
+                Sem dados para este produto.
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetalheOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

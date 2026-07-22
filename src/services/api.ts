@@ -98,7 +98,8 @@ export async function login(usuario: string, senha: string): Promise<LoginRespon
       nome: usuario.toUpperCase(),
       email: `${usuario.toLowerCase()}@cometa.com.br`,
       cargo: "Usuário Protheus",
-      // Filiais são carregadas dinamicamente via obterLojasProtheus no AuthContext
+      // Filiais são carregadas dinamicamente via obterLojasProtheus no AuthContext,
+      // populando o estado global (filiais) consumido pelo BranchSelector no header.
       filiais: [],
     },
   };

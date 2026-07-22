@@ -381,7 +381,7 @@ function ComprasPage() {
     },
     {
       label: "Estoque",
-      value: kpis.qtdEstoque.toLocaleString("pt-BR"),
+      value: totalEstoque.toLocaleString("pt-BR"),
       icon: Package,
     },
   ];

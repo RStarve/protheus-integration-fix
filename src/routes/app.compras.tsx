@@ -416,6 +416,10 @@ function ComprasPage() {
               {filialAtiva?.nome ?? "—"} {loja && `(${loja})`}
             </span>
           </p>
+          <p className="text-[11px] text-muted-foreground mt-1 font-mono">
+            debug · registros: {produtos.length} · filtrados: {dadosFiltrados.length} · 1ª data:{" "}
+            {produtos[0]?.data_movimento ?? "—"}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Dialog open={filtrosOpen} onOpenChange={(o) => (o ? abrirFiltros() : setFiltrosOpen(false))}>

@@ -288,8 +288,8 @@ function ComprasPage() {
   // KPIs — relatório de vendas/margem: os valores financeiros já são totais da linha.
   // Estoque é sempre somado das linhas retornadas pela API, sem filtro local de data.
   const totalEstoque = useMemo(
-    () => filteredDados.reduce((acc, item) => acc + Number(item.qtestq || 0), 0),
-    [filteredDados],
+    () => produtos.reduce((acc, item) => acc + Number(item.qtestq || 0), 0),
+    [produtos],
   );
 
   const kpis = useMemo(() => {
@@ -308,7 +308,7 @@ function ComprasPage() {
     // eslint-disable-next-line no-console
     console.log("Primeira linha da API:", filteredDados[0]);
     return acc;
-  }, [filteredDados, totalEstoque]);
+  }, [filteredDados]);
 
   // Vendas por categoria — usa o mesmo dataset filtrado das KPIs/tabela
   // para que todos os cartões e gráficos reflitam exatamente os mesmos filtros.

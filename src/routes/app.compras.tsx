@@ -285,13 +285,19 @@ function ComprasPage() {
     });
   }, [filteredDados, busca]);
 
-  // KPIs — relatório de vendas/margem: os valores financeiros já são totais da linha
+  // KPIs — relatório de vendas/margem: os valores financeiros já são totais da linha.
+  // Estoque é sempre somado das linhas retornadas pela API, sem filtro local de data.
+  const totalEstoque = useMemo(
+    () => produtos.reduce((acc, item) => acc + Number(item.qtestq || 0), 0),
+    [produtos],
+  );
+
   const kpis = useMemo(() => {
     const acc = filteredDados.reduce(
       (a, p) => {
         a.custoTotal += getCustoPeriodo(p);
         a.vendaTotal += getValorPeriodo(p);
-        a.qtdEstoque += Number(p.qtestq) || 0;
+        a.qtdEstoque += Number(p.qtestq || 0);
         a.qtdVendida += Number(p.qtvend) || 0;
         return a;
       },
@@ -375,7 +381,7 @@ function ComprasPage() {
     },
     {
       label: "Estoque",
-      value: kpis.qtdEstoque.toLocaleString("pt-BR"),
+      value: totalEstoque.toLocaleString("pt-BR"),
       icon: Package,
     },
   ];
@@ -524,10 +530,9 @@ function ComprasPage() {
       {/* Debug temporário — primeira linha bruta da API */}
       {filteredDados[0] && (
         <div className="text-xs text-muted-foreground font-mono border border-dashed rounded-md px-3 py-2">
-          <span className="font-semibold text-foreground">Debug:</span>{" "}
-          Qtd Venda: {String(filteredDados[0]?.qtvend)} | Custo:{" "}
-          {String(filteredDados[0]?.vlcust)} | Venda:{" "}
-          {String(filteredDados[0]?.vlvend)} | Estoque:{" "}
+          <span className="font-semibold text-foreground">Debug API -&gt;</span>{" "}
+          Qtd Venda: {String(filteredDados[0]?.qtvend)} | Venda:{" "}
+          {String(filteredDados[0]?.vlvend)} | Estoque (qtestq):{" "}
           {String(filteredDados[0]?.qtestq)}
         </div>
       )}

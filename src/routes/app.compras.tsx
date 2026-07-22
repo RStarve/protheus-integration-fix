@@ -855,9 +855,16 @@ function ComprasPage() {
                     const valorLinha = getValorPeriodo(p);
                     const markupLinha = custoLinha > 0 ? ((valorLinha - custoLinha) / custoLinha) * 100 : 0;
                     return (
-                      <TableRow key={`${p.codigo}-${p.descri}`}>
+                      <TableRow
+                        key={`${p.codigo}-${p.descri}`}
+                        onClick={() => abrirDetalhe(p.codigo, p.descri)}
+                        className="cursor-pointer"
+                      >
                         <TableCell className="tabular-nums text-muted-foreground">
-                          {p.codigo}
+                          <span className="inline-flex items-center gap-2">
+                            <Eye className="h-3.5 w-3.5 text-brand" />
+                            {p.codigo}
+                          </span>
                         </TableCell>
                         <TableCell className="font-medium max-w-[280px] truncate">
                           {p.descri}

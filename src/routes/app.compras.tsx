@@ -114,18 +114,11 @@ const getValorPeriodo = (p: { vlvend: unknown }) => Number(p.vlvend) || 0;
 
 function ComprasPage() {
   const { filialAtiva, selectedLoja, token, usuario } = useAuth();
-  // Login ID do Protheus (nunca o nome de exibição). Fallback estático mantém
-  // o comportamento do último teste estável quando a sessão não trouxer o ID.
-  const userLogin =
-    (usuario?.id?.trim() ||
-      (typeof window !== "undefined"
-        ? (localStorage.getItem("username") ?? "").trim()
-        : "") ||
-      "maique.meireles");
-
-  // Filial vem do seletor global no header. Fallback "32" para funcionar
-  // mesmo se /obterlojas falhar durante o teste.
-  const loja = (selectedLoja || "32").trim();
+  // Login ID do Protheus (nunca o nome de exibição).
+  const userLogin = (usuario?.id ?? "").trim();
+  // Filial vem exclusivamente do seletor global no header (estado do AuthContext).
+  // Sem loja selecionada → não dispara /arelcmp.
+  const loja = (selectedLoja ?? "").trim();
 
   const [busca, setBusca] = useState("");
   const { inicio: defaultInicio, fim: defaultFim } = useMemo(() => {

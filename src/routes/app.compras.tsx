@@ -908,6 +908,56 @@ function ComprasPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={detalheOpen} onOpenChange={setDetalheOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalhes do produto</DialogTitle>
+            <DialogDescription>
+              {detalheCodigo ? `Código ${detalheCodigo}` : ""}
+              {detalheDescri ? ` • ${detalheDescri}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            {detalheQuery.isLoading || detalheQuery.isFetching ? (
+              <div className="space-y-2 py-2">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
+                ))}
+              </div>
+            ) : detalheQuery.error ? (
+              <div className="p-4 text-sm text-muted-foreground">
+                Não foi possível carregar os detalhes.
+              </div>
+            ) : detalheQuery.data && detalheQuery.data.campos.length > 0 ? (
+              <div className="grid gap-2 sm:grid-cols-2 py-2">
+                {detalheQuery.data.campos.map((c) => (
+                  <div
+                    key={c.chave}
+                    className="rounded-md border border-border px-3 py-2"
+                  >
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {c.chave}
+                    </div>
+                    <div className="text-sm font-medium break-words">
+                      {c.valor || "—"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-sm text-muted-foreground">
+                Sem dados para este produto.
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetalheOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

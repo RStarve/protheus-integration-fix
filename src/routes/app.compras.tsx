@@ -107,11 +107,10 @@ const formatCompact = (n: number) =>
       ? `R$ ${(n / 1_000).toFixed(0)}k`
       : `R$ ${n.toFixed(0)}`;
 
-// O Protheus (arelcmp) entrega os totais unitários em `vlcust` (custo) e
-// `vlvend` (venda). Multiplicamos pela quantidade vendida no período para
-// obter os totais do período — bate com o Power BI de referência.
-const getCustoPeriodo = (p: { vlcust: number; qtvend: number }) => p.vlcust * p.qtvend;
-const getValorPeriodo = (p: { vlvend: number; qtvend: number }) => p.vlvend * p.qtvend;
+// Auditoria: a API /arelcmp já entrega `vlcust` e `vlvend` como totais do
+// período por linha. Fazemos SOMA SIMPLES — nunca multiplicar por qtvend/qtestq.
+const getCustoPeriodo = (p: { vlcust: unknown }) => Number(p.vlcust) || 0;
+const getValorPeriodo = (p: { vlvend: unknown }) => Number(p.vlvend) || 0;
 
 function ComprasPage() {
   const { filialAtiva, selectedLoja, token, filiais, setFilialAtiva, usuario } = useAuth();
@@ -292,13 +291,16 @@ function ComprasPage() {
       (a, p) => {
         a.custoTotal += getCustoPeriodo(p);
         a.vendaTotal += getValorPeriodo(p);
-        a.qtdEstoque += p.qtestq;
-        a.qtdVendida += p.qtvend;
+        a.qtdEstoque += Number(p.qtestq) || 0;
+        a.qtdVendida += Number(p.qtvend) || 0;
         return a;
       },
       { custoTotal: 0, vendaTotal: 0, qtdEstoque: 0, qtdVendida: 0, markup: 0 },
     );
     acc.markup = acc.custoTotal > 0 ? ((acc.vendaTotal - acc.custoTotal) / acc.custoTotal) * 100 : 0;
+    // Raio-X: primeira linha bruta da API para conferir formato dos campos.
+    // eslint-disable-next-line no-console
+    console.log("Primeira linha da API:", filteredDados[0]);
     return acc;
   }, [filteredDados]);
 

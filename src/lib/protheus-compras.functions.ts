@@ -104,6 +104,15 @@ export const obterComprasProtheus = createServerFn({ method: "POST" })
       lista = dadosRaw;
     }
 
+    if (lista.length > 0) {
+      console.log(
+        "[protheus] /arelcmp primeira linha bruta — chaves:",
+        Object.keys((lista[0] ?? {}) as Record<string, unknown>),
+        "amostra:",
+        JSON.stringify(lista[0]).slice(0, 400),
+      );
+    }
+
     return lista.map((item) => {
       const o = (item ?? {}) as Record<string, unknown>;
       const dataMov = toStr(

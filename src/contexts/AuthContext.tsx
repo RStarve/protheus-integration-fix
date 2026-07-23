@@ -1,16 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Filial, Usuario } from "@/services/api";
-// import { obterLojasProtheus } from "@/lib/protheus-lojas.functions";
 
-// Converte a string de filiais do backend ("'01','02','03'") em um array de códigos limpos.
-function parseFiliaisUsuario(usuario: Usuario | null): string[] {
-  if (!usuario?.lojas || typeof usuario.lojas !== "string") return [];
-  return usuario.lojas
-    .replace(/'/g, "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
+// DESCOMENTAMOS A IMPORTAÇÃO: Vamos usar a função que arrumamos!
+import { obterLojasProtheus } from "@/lib/protheus-lojas.functions";
 
 const FILIAL_PADRAO_CODIGO = "32";
 
@@ -52,15 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const p: Persisted = JSON.parse(raw);
-        // Sessão antiga (antes do backend devolver `lojas`) → força novo login
-        // para que o dropdown de filiais seja populado corretamente.
-        if (!p.usuario?.lojas) {
-          localStorage.removeItem(STORAGE_KEY);
-        } else {
-          setToken(p.token);
-          setUsuario(p.usuario);
-          setPendingFilialCodigo(p.filialAtivaCodigo);
-        }
+        setToken(p.token);
+        setUsuario(p.usuario);
+        setPendingFilialCodigo(p.filialAtivaCodigo);
       }
     } catch {
       // ignore
@@ -68,41 +54,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // Filiais liberadas vêm do backend na propriedade `usuario.lojas`.
+  // Efeito que busca as filiais na API de verdade usando a função corrigida
   useEffect(() => {
-    if (!usuario) {
-      setFiliais([]);
-      setFilialAtivaState(null);
+    let isMounted = true;
+
+    async function carregarLojas() {
+      if (!usuario) {
+        setFiliais([]);
+        setFilialAtivaState(null);
+        setFiliaisError(null);
+        setFiliaisLoading(false);
+        return;
+      }
+
+      setFiliaisLoading(true);
       setFiliaisError(null);
-      setFiliaisLoading(false);
-      return;
+
+      try {
+        // Chamada assíncrona para a função do servidor
+        // Passamos o usuario.id (que guarda o username) e o token
+        const filiaisUsuario = await obterLojasProtheus({
+          user: usuario.id || (usuario as any).username || "",
+          token: token || undefined,
+        });
+
+        if (!isMounted) return;
+
+        setFiliais(filiaisUsuario);
+
+        // Auto-seleção: se houver apenas 1 filial, seleciona automaticamente.
+        const escolhida =
+          filiaisUsuario.length === 1
+            ? filiaisUsuario[0]
+            : (filiaisUsuario.find((l) => l.codigo === pendingFilialCodigo) ??
+              filiaisUsuario.find((l) => l.codigo === FILIAL_PADRAO_CODIGO) ??
+              filiaisUsuario[0] ??
+              null);
+
+        setFilialAtivaState(escolhida);
+        if (escolhida) persist({ filialAtivaCodigo: escolhida.codigo });
+      } catch (error) {
+        if (!isMounted) return;
+        console.error("[AuthProvider] Erro ao carregar lojas:", error);
+        setFiliaisError("Não foi possível carregar suas lojas.");
+      } finally {
+        if (isMounted) setFiliaisLoading(false);
+      }
     }
 
-    const codigos = parseFiliaisUsuario(usuario);
-    const filiaisUsuario: Filial[] = codigos.map((codigo) => ({
-      id: codigo,
-      codigo,
-      nome: `Loja ${codigo}`,
-      uf: "",
-    }));
+    carregarLojas();
 
-    setFiliaisLoading(false);
-    setFiliaisError(null);
-    setFiliais(filiaisUsuario);
-
-    // Auto-seleção: se houver apenas 1 filial, seleciona automaticamente.
-    // Caso contrário, respeita a persistida, depois a padrão, depois a 1ª.
-    const escolhida =
-      filiaisUsuario.length === 1
-        ? filiaisUsuario[0]
-        : (filiaisUsuario.find((l) => l.codigo === pendingFilialCodigo) ??
-          filiaisUsuario.find((l) => l.codigo === FILIAL_PADRAO_CODIGO) ??
-          filiaisUsuario[0] ??
-          null);
-    setFilialAtivaState(escolhida);
-    if (escolhida) persist({ filialAtivaCodigo: escolhida.codigo });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usuario]);
+    return () => {
+      isMounted = false;
+    };
+    // Re-executa sempre que o usuário logar
+  }, [usuario, token, pendingFilialCodigo]);
 
   const persist = (next: Partial<Persisted> | null) => {
     if (!next) {
@@ -127,7 +133,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPendingFilialCodigo(undefined);
     persist({ token, usuario, filialAtivaCodigo: undefined });
     if (typeof window !== "undefined") {
-      // Sempre grava o LOGIN (id), nunca o nome de exibição.
       if (usuario.id) localStorage.setItem("username", usuario.id);
     }
   };

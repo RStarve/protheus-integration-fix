@@ -1,10 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Filial, Usuario } from "@/services/api";
 
-// DESCOMENTAMOS A IMPORTAÇÃO: Vamos usar a função que arrumamos!
+// Importação da função que busca as lojas no Protheus
 import { obterLojasProtheus } from "@/lib/protheus-lojas.functions";
-
-const FILIAL_PADRAO_CODIGO = "32";
 
 interface AuthState {
   usuario: Usuario | null;
@@ -82,14 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setFiliais(filiaisUsuario);
 
-        // Auto-seleção: se houver apenas 1 filial, seleciona automaticamente.
-        const escolhida =
-          filiaisUsuario.length === 1
-            ? filiaisUsuario[0]
-            : (filiaisUsuario.find((l) => l.codigo === pendingFilialCodigo) ??
-              filiaisUsuario.find((l) => l.codigo === FILIAL_PADRAO_CODIGO) ??
-              filiaisUsuario[0] ??
-              null);
+        // Auto-seleção: tenta pegar a última acessada, senão pega a primeira da lista da API.
+        const escolhida = filiaisUsuario.find((l) => l.codigo === pendingFilialCodigo) ?? filiaisUsuario[0] ?? null;
 
         setFilialAtivaState(escolhida);
         if (escolhida) persist({ filialAtivaCodigo: escolhida.codigo });

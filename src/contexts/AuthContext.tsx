@@ -2,17 +2,16 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { Filial, Usuario } from "@/services/api";
 // import { obterLojasProtheus } from "@/lib/protheus-lojas.functions";
 
-// Lista fixa (hardcoded) de filiais enquanto a API de autenticação não retorna as permissões.
-const CODIGOS_FILIAIS_FIXOS = [
-  "01", "02", "03", "04", "05", "06", "09", "10", "12", "13", "14", "15",
-  "16", "19", "20", "21", "22", "24", "25", "26", "28", "29", "31", "32",
-];
-const FILIAIS_FIXAS: Filial[] = CODIGOS_FILIAIS_FIXOS.map((codigo) => ({
-  id: codigo,
-  codigo,
-  nome: `Loja ${codigo}`,
-  uf: "",
-}));
+// Converte a string de filiais do backend ("'01','02','03'") em um array de códigos limpos.
+function parseFiliaisUsuario(usuario: Usuario | null): string[] {
+  if (!usuario?.lojas || typeof usuario.lojas !== "string") return [];
+  return usuario.lojas
+    .replace(/'/g, "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 const FILIAL_PADRAO_CODIGO = "32";
 
 interface AuthState {
@@ -63,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // Lista fixa de filiais: destrava o header enquanto a API de permissões não é integrada.
+  // Filiais liberadas vêm do backend na propriedade `usuario.lojas`.
   useEffect(() => {
     if (!usuario) {
       setFiliais([]);
@@ -72,13 +71,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setFiliaisLoading(false);
       return;
     }
+
+    const codigos = parseFiliaisUsuario(usuario);
+    const filiaisUsuario: Filial[] = codigos.map((codigo) => ({
+      id: codigo,
+      codigo,
+      nome: `Loja ${codigo}`,
+      uf: "",
+    }));
+
     setFiliaisLoading(false);
     setFiliaisError(null);
-    setFiliais(FILIAIS_FIXAS);
+    setFiliais(filiaisUsuario);
+
     const escolhida =
-      FILIAIS_FIXAS.find((l) => l.codigo === pendingFilialCodigo) ??
-      FILIAIS_FIXAS.find((l) => l.codigo === FILIAL_PADRAO_CODIGO) ??
-      FILIAIS_FIXAS[0] ??
+      filiaisUsuario.find((l) => l.codigo === pendingFilialCodigo) ??
+      filiaisUsuario.find((l) => l.codigo === FILIAL_PADRAO_CODIGO) ??
+      filiaisUsuario[0] ??
       null;
     setFilialAtivaState(escolhida);
     if (escolhida) persist({ filialAtivaCodigo: escolhida.codigo });

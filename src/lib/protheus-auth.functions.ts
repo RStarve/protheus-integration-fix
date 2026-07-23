@@ -17,6 +17,7 @@ export interface ProtheusTokenResponse {
   token_type?: string;
   expires_in?: number;
   scope?: string;
+  lojas?: string;
 }
 
 /**
@@ -87,6 +88,7 @@ export const loginProtheus = createServerFn({ method: "POST" })
       expires_in: token.expires_in,
       scope: token.scope,
       username: data.username,
+      lojas: token.lojas,
     };
   });
 

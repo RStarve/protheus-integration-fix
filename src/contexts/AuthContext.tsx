@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { toast } from "sonner";
 import type { Filial, Usuario } from "@/services/api";
 // import { obterLojasProtheus } from "@/lib/protheus-lojas.functions";
 

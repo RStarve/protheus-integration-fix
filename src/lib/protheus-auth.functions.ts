@@ -17,6 +17,7 @@ export interface ProtheusTokenResponse {
   token_type?: string;
   expires_in?: number;
   scope?: string;
+  lojas?: string;
 }
 
 /**

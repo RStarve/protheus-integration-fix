@@ -25,6 +25,7 @@ export interface Usuario {
   email: string;
   cargo: string;
   filiais: Filial[];
+  lojas?: string;
 }
 
 export interface LoginResponse {

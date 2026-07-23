@@ -17,15 +17,18 @@ export function BranchSelector() {
   if (!usuario) return null;
 
   const unica = filiais.length === 1;
-  const desabilitado = filiaisLoading || unica || filiais.length === 0;
+  const vazio = filiais.length === 0;
+  const desabilitado = filiaisLoading || unica || vazio;
 
   const label = filiaisLoading
     ? "Carregando lojas..."
     : filiaisError
       ? "Erro ao carregar"
-      : filialAtiva
-        ? `${filialAtiva.codigo} · ${filialAtiva.nome}`
-        : "Selecionar filial";
+      : vazio
+        ? "Nenhuma filial disponível"
+        : filialAtiva
+          ? `${filialAtiva.codigo} - ${filialAtiva.nome}`
+          : "Selecionar filial";
 
   return (
     <DropdownMenu open={open} onOpenChange={(o) => !desabilitado && setOpen(o)}>
@@ -57,11 +60,12 @@ export function BranchSelector() {
             >
               <Check className={`h-4 w-4 ${ativa ? "opacity-100 text-brand" : "opacity-0"}`} />
               <div className="flex flex-col">
-                <span className="text-sm font-medium">{f.nome}</span>
-                <span className="text-xs text-muted-foreground">
-                  Cód. {f.codigo}
-                  {f.uf ? ` · ${f.uf}` : ""}
+                <span className="text-sm font-medium">
+                  {f.codigo} - {f.nome}
                 </span>
+                {f.uf && (
+                  <span className="text-xs text-muted-foreground">{f.uf}</span>
+                )}
               </div>
             </DropdownMenuItem>
           );

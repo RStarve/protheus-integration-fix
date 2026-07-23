@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // Lista fixa de filiais: destrava o header enquanto a API de permissões não é integrada.
+  // Filiais liberadas vêm do backend na propriedade `usuario.lojas`.
   useEffect(() => {
     if (!usuario) {
       setFiliais([]);
@@ -71,13 +71,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setFiliaisLoading(false);
       return;
     }
+
+    const codigos = parseFiliaisUsuario(usuario);
+    const filiaisUsuario: Filial[] = codigos.map((codigo) => ({
+      id: codigo,
+      codigo,
+      nome: `Loja ${codigo}`,
+      uf: "",
+    }));
+
     setFiliaisLoading(false);
     setFiliaisError(null);
-    setFiliais(FILIAIS_FIXAS);
+    setFiliais(filiaisUsuario);
+
     const escolhida =
-      FILIAIS_FIXAS.find((l) => l.codigo === pendingFilialCodigo) ??
-      FILIAIS_FIXAS.find((l) => l.codigo === FILIAL_PADRAO_CODIGO) ??
-      FILIAIS_FIXAS[0] ??
+      filiaisUsuario.find((l) => l.codigo === pendingFilialCodigo) ??
+      filiaisUsuario.find((l) => l.codigo === FILIAL_PADRAO_CODIGO) ??
+      filiaisUsuario[0] ??
       null;
     setFilialAtivaState(escolhida);
     if (escolhida) persist({ filialAtivaCodigo: escolhida.codigo });

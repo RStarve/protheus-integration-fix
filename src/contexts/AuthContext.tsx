@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // Efeito que busca as filiais na API de verdade usando a função corrigida
+  // Efeito que busca as filiais na API
   useEffect(() => {
     let isMounted = true;
 
@@ -69,8 +69,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setFiliaisError(null);
 
       try {
-        // Chamada assíncrona para a função do servidor
-        // Passamos o usuario.id (que guarda o username) e o token
         const filiaisUsuario = await obterLojasProtheus({
           user: usuario.id || (usuario as any).username || "",
           token: token || undefined,
@@ -99,7 +97,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       isMounted = false;
     };
-    // Re-executa sempre que o usuário logar
   }, [usuario, token, pendingFilialCodigo]);
 
   const persist = (next: Partial<Persisted> | null) => {

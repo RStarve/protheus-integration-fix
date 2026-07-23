@@ -52,9 +52,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const p: Persisted = JSON.parse(raw);
-        setToken(p.token);
-        setUsuario(p.usuario);
-        setPendingFilialCodigo(p.filialAtivaCodigo);
+        // Sessão antiga (antes do backend devolver `lojas`) → força novo login
+        // para que o dropdown de filiais seja populado corretamente.
+        if (!p.usuario?.lojas) {
+          localStorage.removeItem(STORAGE_KEY);
+        } else {
+          setToken(p.token);
+          setUsuario(p.usuario);
+          setPendingFilialCodigo(p.filialAtivaCodigo);
+        }
       }
     } catch {
       // ignore
@@ -84,11 +90,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setFiliaisError(null);
     setFiliais(filiaisUsuario);
 
+    // Auto-seleção: se houver apenas 1 filial, seleciona automaticamente.
+    // Caso contrário, respeita a persistida, depois a padrão, depois a 1ª.
     const escolhida =
-      filiaisUsuario.find((l) => l.codigo === pendingFilialCodigo) ??
-      filiaisUsuario.find((l) => l.codigo === FILIAL_PADRAO_CODIGO) ??
-      filiaisUsuario[0] ??
-      null;
+      filiaisUsuario.length === 1
+        ? filiaisUsuario[0]
+        : (filiaisUsuario.find((l) => l.codigo === pendingFilialCodigo) ??
+          filiaisUsuario.find((l) => l.codigo === FILIAL_PADRAO_CODIGO) ??
+          filiaisUsuario[0] ??
+          null);
     setFilialAtivaState(escolhida);
     if (escolhida) persist({ filialAtivaCodigo: escolhida.codigo });
     // eslint-disable-next-line react-hooks/exhaustive-deps

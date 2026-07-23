@@ -18,7 +18,6 @@ interface AuthState {
 }
 
 const AuthContext = createContext<AuthState | null>(null);
-
 const STORAGE_KEY = "protheus.session.v1";
 
 interface Persisted {
@@ -26,6 +25,24 @@ interface Persisted {
   usuario: Usuario;
   filialAtivaCodigo?: string;
 }
+
+// Movido para FORA do componente para não dar erro de dependência no React (ESLint)
+const persist = (next: Partial<Persisted> | null) => {
+  if (!next) {
+    localStorage.removeItem(STORAGE_KEY);
+    return;
+  }
+  const current: Persisted | null = (() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+  const merged = { ...(current ?? {}), ...next } as Persisted;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
@@ -52,7 +69,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // Efeito que busca as filiais na API
   useEffect(() => {
     let isMounted = true;
 
@@ -70,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         const filiaisUsuario = await obterLojasProtheus({
-          user: usuario.id || (usuario as any).username || "",
+          user: usuario.id || "",
           token: token || undefined,
         });
 
@@ -78,7 +94,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setFiliais(filiaisUsuario);
 
-        // Auto-seleção: tenta pegar a última acessada, senão pega a primeira da lista da API.
         const escolhida = filiaisUsuario.find((l) => l.codigo === pendingFilialCodigo) ?? filiaisUsuario[0] ?? null;
 
         setFilialAtivaState(escolhida);
@@ -99,30 +114,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [usuario, token, pendingFilialCodigo]);
 
-  const persist = (next: Partial<Persisted> | null) => {
-    if (!next) {
-      localStorage.removeItem(STORAGE_KEY);
-      return;
-    }
-    const current: Persisted | null = (() => {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        return raw ? JSON.parse(raw) : null;
-      } catch {
-        return null;
-      }
-    })();
-    const merged = { ...(current ?? {}), ...next } as Persisted;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-  };
-
-  const setSession = ({ token, usuario }: { token: string; usuario: Usuario }) => {
-    setToken(token);
-    setUsuario(usuario);
+  const setSession = ({ token: newToken, usuario: newUsuario }: { token: string; usuario: Usuario }) => {
+    setToken(newToken);
+    setUsuario(newUsuario);
     setPendingFilialCodigo(undefined);
-    persist({ token, usuario, filialAtivaCodigo: undefined });
+    persist({ token: newToken, usuario: newUsuario, filialAtivaCodigo: undefined });
     if (typeof window !== "undefined") {
-      if (usuario.id) localStorage.setItem("username", usuario.id);
+      if (newUsuario.id) localStorage.setItem("username", newUsuario.id);
     }
   };
 

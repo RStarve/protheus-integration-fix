@@ -1,7 +1,20 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import type { Filial, Usuario } from "@/services/api";
-import { obterLojasProtheus } from "@/lib/protheus-lojas.functions";
+// import { obterLojasProtheus } from "@/lib/protheus-lojas.functions";
+
+// Lista fixa (hardcoded) de filiais enquanto a API de autenticação não retorna as permissões.
+const CODIGOS_FILIAIS_FIXOS = [
+  "01", "02", "03", "04", "05", "06", "09", "10", "12", "13", "14", "15",
+  "16", "19", "20", "21", "22", "24", "25", "26", "28", "29", "31", "32",
+];
+const FILIAIS_FIXAS: Filial[] = CODIGOS_FILIAIS_FIXOS.map((codigo) => ({
+  id: codigo,
+  codigo,
+  nome: `Loja ${codigo}`,
+  uf: "",
+}));
+const FILIAL_PADRAO_CODIGO = "32";
 
 interface AuthState {
   usuario: Usuario | null;
@@ -51,68 +64,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // Busca dinâmica das lojas quando há usuário logado
+  // Lista fixa de filiais: destrava o header enquanto a API de permissões não é integrada.
   useEffect(() => {
     if (!usuario) {
       setFiliais([]);
       setFilialAtivaState(null);
-      return;
-    }
-    let cancelled = false;
-    setFiliaisLoading(true);
-    setFiliaisError(null);
-    const rawUsername =
-      usuario.id ||
-      (typeof window !== "undefined" ? localStorage.getItem("username") ?? "" : "");
-    const username = (rawUsername ?? "").trim();
-    console.log("Usuário (login ID) enviado para a API:", username);
-    if (!username) {
-      const msg = "Usuário não encontrado. Faça login novamente.";
-      toast.error(msg);
-      setFiliaisError(msg);
+      setFiliaisError(null);
       setFiliaisLoading(false);
       return;
     }
-    obterLojasProtheus({ data: { user: username, token: token ?? undefined } })
-      .then((lojas) => {
-        if (cancelled) return;
-        console.log("Resposta bruta de Lojas:", lojas);
-        setFiliais(lojas);
-        if (!lojas || lojas.length === 0) {
-          const msg =
-            "Nenhuma filial retornada pela API para este usuário. Verifique as permissões no Protheus.";
-          toast.error(msg);
-          setFiliaisError(msg);
-          setFilialAtivaState(null);
-          return;
-        }
-        // Auto-seleciona: mantém a persistida (por código) OU a primeira loja do array
-        const escolhida =
-          lojas.find((l) => l.codigo === pendingFilialCodigo) ?? lojas[0] ?? null;
-        setFilialAtivaState(escolhida);
-        if (escolhida) persist({ filialAtivaCodigo: escolhida.codigo });
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        console.error("Erro ao carregar filiais (/obterlojas):", err);
-        const raw = err instanceof Error ? err.message : String(err);
-        const isNet =
-          /network|failed to fetch|cors|load failed|net::/i.test(raw) ||
-          raw.toLowerCase().includes("conectar");
-        const msg = isNet
-          ? "Erro ao carregar as filiais. Verifique a conexão com a API."
-          : `Erro ao carregar as filiais: ${raw}`;
-        toast.error(msg);
-        setFiliaisError(msg);
-        setFiliais([]);
-        setFilialAtivaState(null);
-      })
-      .finally(() => {
-        if (!cancelled) setFiliaisLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
+    setFiliaisLoading(false);
+    setFiliaisError(null);
+    setFiliais(FILIAIS_FIXAS);
+    const escolhida =
+      FILIAIS_FIXAS.find((l) => l.codigo === pendingFilialCodigo) ??
+      FILIAIS_FIXAS.find((l) => l.codigo === FILIAL_PADRAO_CODIGO) ??
+      FILIAIS_FIXAS[0] ??
+      null;
+    setFilialAtivaState(escolhida);
+    if (escolhida) persist({ filialAtivaCodigo: escolhida.codigo });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario]);
 
